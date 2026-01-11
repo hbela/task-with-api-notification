@@ -1,4 +1,6 @@
+import { authApi } from '@/lib/api';
 import { GoogleSignin, statusCodes, User } from '@react-native-google-signin/google-signin';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity } from 'react-native';
 import { ThemedText } from './themed-text';
@@ -7,6 +9,7 @@ import { ThemedView } from './themed-view';
 export function GoogleSignInButton() {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [userInfo, setUserInfo] = useState<User | null>(null);
+  const router = useRouter();
 
   const signIn = async () => {
     try {
@@ -24,11 +27,23 @@ export function GoogleSignInButton() {
       console.log('User Info:', user);
       console.log('ID Token:', idToken);
       
+      if (!idToken) {
+        throw new Error('No ID token received from Google');
+      }
+      
+      // 4. Authenticate with backend and get JWT token
+      console.log('Authenticating with backend...');
+      const authResponse = await authApi.loginWithGoogle(idToken);
+      console.log('Backend auth successful:', authResponse.user);
+      
       setUserInfo(user.data);
+      
+      // Redirect to tasks/explore page
+      router.push('/(tabs)/explore');
       
       Alert.alert(
         'Sign-In Successful!',
-        `Welcome ${user.data?.user.name || 'User'}!`,
+        `Welcome ${authResponse.user.name || user.data?.user.name || 'User'}!`,
         [{ text: 'OK' }]
       );
     } catch (error: any) {

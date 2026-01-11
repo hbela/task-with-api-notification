@@ -1,0 +1,65 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - stores authenticated users
+model User {
+  id            Int            @id @default(autoincrement())
+  googleId      String         @unique
+  email         String         @unique
+  name          String?
+  avatar        String?
+  lastLogin     DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  // Relations
+  refreshTokens RefreshToken[]
+  tasks         Task[]
+
+  @@index([email])
+  @@index([googleId])
+}
+
+// RefreshToken model - stores refresh tokens for token rotation
+model RefreshToken {
+  id               Int       @id @default(autoincrement())
+  token            String    @unique
+  userId           Int
+  expiresAt        DateTime
+  revoked          Boolean   @default(false)
+  replacedByToken  String?
+  createdAt        DateTime  @default(now())
+  
+  // Relations
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([token])
+}
+
+// Task model - demonstrates protected resource
+model Task {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  completed   Boolean   @default(false)
+  userId      Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([completed])
+}
