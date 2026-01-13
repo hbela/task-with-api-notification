@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "task-eas-google",
-    "slug": "task-eas-google",
+    "name": "new-taskmanager",
+    "slug": "new-taskmanager",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -11,6 +11,7 @@
     "ios": {
       "supportsTablet": true
     },
+    "owner": "elyscom",
     "android": {
       "package": "com.taskmanager.app",
       "adaptiveIcon": {
@@ -21,7 +22,10 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "usesCleartextTraffic": true
+      "permissions": [
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM"
+      ]
     },
     "web": {
       "output": "static",
@@ -41,7 +45,9 @@
           }
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "expo-secure-store",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -50,7 +56,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "2276afde-d3bb-4f30-9ba2-fdd2aa2a1367"
+        "projectId": "71a867f1-3d88-4e0b-b910-b6946c579ae5"
       }
     }
   }
