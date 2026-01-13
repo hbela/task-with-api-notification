@@ -1,11 +1,11 @@
 import ErrorMessage from '@/components/ErrorMessage';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TaskCard from '@/components/TaskCard';
-import { useTasks } from '@/hooks/useTasks';
+import { useDeleteTask, useTasks, useToggleTaskComplete } from '@/hooks/useTasksQuery';
 import { Task } from '@/types/task';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
     Alert,
     FlatList,
@@ -19,45 +19,19 @@ import {
 
 export default function TasksScreen() {
   const router = useRouter();
-  const {
-    tasks,
-    loading,
-    error,
-    fetchTasks,
-    deleteTask,
-    toggleTaskComplete,
-    pagination,
-    setError
-  } = useTasks();
-  
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
-  const [refreshing, setRefreshing] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
 
-  useEffect(() => {
-    loadTasks();
-  }, [filter]);
+  // Fetch tasks with TanStack Query
+  const { data, isLoading, error, refetch, isRefetching } = useTasks({
+    status: filter === 'all' ? undefined : filter,
+  });
 
-  const loadTasks = async (page = 1) => {
-    try {
-      await fetchTasks({
-        page,
-        status: filter === 'all' ? undefined : filter,
-        refresh: page === 1
-      });
-    } catch (err) {
-      // Error is already set in the hook
-    } finally {
-      setInitialLoading(false);
-    }
-  };
+  // Mutations
+  const deleteTaskMutation = useDeleteTask();
+  const toggleCompleteMutation = useToggleTaskComplete();
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadTasks(1);
-    setRefreshing(false);
-  };
+  const tasks = data?.tasks || [];
 
   const handleDelete = (task: Task) => {
     Alert.alert(
@@ -70,7 +44,7 @@ export default function TasksScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteTask(task.id);
+              await deleteTaskMutation.mutateAsync(task.id);
             } catch (err) {
               Alert.alert('Error', 'Failed to delete task');
             }
@@ -82,7 +56,10 @@ export default function TasksScreen() {
 
   const handleToggleComplete = async (task: Task) => {
     try {
-      await toggleTaskComplete(task.id, !task.completed);
+      await toggleCompleteMutation.mutateAsync({
+        id: task.id,
+        completed: !task.completed,
+      });
     } catch (err) {
       Alert.alert('Error', 'Failed to update task');
     }
@@ -98,14 +75,13 @@ export default function TasksScreen() {
     <TaskCard
       task={item}
       onPress={() => router.push(`/(app)/task/${item.id}`)}
-      onEdit={() => router.push(`/(app)/task/edit/${item.id}`)}
-      onDelete={() => handleDelete(item)}
       onToggleComplete={() => handleToggleComplete(item)}
     />
   );
 
+
   const renderEmpty = () => {
-    if (initialLoading) return null;
+    if (isLoading) return null;
     
     return (
       <View style={styles.emptyContainer}>
@@ -131,18 +107,15 @@ export default function TasksScreen() {
     );
   };
 
-  if (initialLoading) {
+  if (isLoading) {
     return <LoadingSpinner message="Loading tasks..." />;
   }
 
   if (error && tasks.length === 0) {
     return (
       <ErrorMessage
-        message={error}
-        onRetry={() => {
-          setError(null);
-          loadTasks();
-        }}
+        message={error.message || 'Failed to load tasks'}
+        onRetry={() => refetch()}
       />
     );
   }
@@ -196,31 +169,15 @@ export default function TasksScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={renderEmpty}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />
         }
-        onEndReached={() => {
-          if (pagination.hasMore && !loading && !searchQuery) {
-            loadTasks(pagination.page + 1);
-          }
-        }}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={() => {
-          if (loading && tasks.length > 0) {
-            return (
-              <View style={styles.footerLoading}>
-                <LoadingSpinner size="small" />
-              </View>
-            );
-          }
-          return null;
-        }}
       />
 
       {/* Error Banner */}
       {error && tasks.length > 0 && (
         <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText}>{error}</Text>
-          <TouchableOpacity onPress={() => setError(null)}>
+          <Text style={styles.errorBannerText}>{error.message || 'An error occurred'}</Text>
+          <TouchableOpacity onPress={() => refetch()}>
             <Ionicons name="close" size={20} color="white" />
           </TouchableOpacity>
         </View>

@@ -2,25 +2,48 @@ import { Task } from '@/types/task';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 interface TaskCardProps {
   task: Task;
   onPress: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
   onToggleComplete: () => void;
 }
+
+const formatDateTime = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+};
+
+const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case 'urgent':
+      return '#FF3B30';
+    case 'high':
+      return '#FF9500';
+    case 'medium':
+      return '#007AFF';
+    case 'low':
+      return '#34C759';
+    default:
+      return '#8E8E93';
+  }
+};
 
 export default function TaskCard({
   task,
   onPress,
-  onEdit,
-  onDelete,
   onToggleComplete
 }: TaskCardProps) {
   return (
@@ -45,12 +68,19 @@ export default function TaskCard({
 
         {/* Task Info */}
         <View style={styles.info}>
-          <Text
-            style={[styles.title, task.completed && styles.completedTitle]}
-            numberOfLines={2}
-          >
-            {task.title}
-          </Text>
+          <View style={styles.titleRow}>
+            <Text
+              style={[styles.title, task.completed && styles.completedTitle]}
+              numberOfLines={2}
+            >
+              {task.title}
+            </Text>
+            <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(task.priority) + '20' }]}>
+              <Text style={[styles.priorityText, { color: getPriorityColor(task.priority) }]}>
+                {task.priority.toUpperCase()}
+              </Text>
+            </View>
+          </View>
           
           {task.description && (
             <Text
@@ -61,33 +91,25 @@ export default function TaskCard({
             </Text>
           )}
 
-          <Text style={styles.date}>
-            {new Date(task.createdAt).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            })}
-          </Text>
+          <View style={styles.dateContainer}>
+            <View style={styles.dateRow}>
+              <Ionicons name="calendar-outline" size={12} color="#8E8E93" />
+              <Text style={styles.dateLabel}>Created:</Text>
+              <Text style={styles.date}>{formatDateTime(task.createdAt)}</Text>
+            </View>
+            
+            {task.dueDate && (
+              <View style={styles.dateRow}>
+                <Ionicons name="alarm-outline" size={12} color="#FF9500" />
+                <Text style={styles.dateLabel}>Due:</Text>
+                <Text style={[styles.date, styles.dueDate]}>{formatDateTime(task.dueDate)}</Text>
+              </View>
+            )}
+          </View>
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actions}>
-          <TouchableOpacity
-            onPress={onEdit}
-            style={styles.actionButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="pencil" size={20} color="#007AFF" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={onDelete}
-            style={styles.actionButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-          </TouchableOpacity>
-        </View>
+        {/* Right Arrow */}
+        <Ionicons name="chevron-forward" size={20} color="#C7C7CC" style={styles.arrow} />
       </View>
     </TouchableOpacity>
   );
@@ -111,25 +133,40 @@ const styles = StyleSheet.create({
   },
   content: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   checkbox: {
     marginRight: 12,
-    marginTop: 2,
   },
   info: {
     flex: 1,
-    marginRight: 12,
+    marginRight: 8,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
   },
   title: {
+    flex: 1,
     fontSize: 16,
     fontWeight: '600',
     color: '#1C1C1E',
-    marginBottom: 4,
+    marginRight: 8,
   },
   completedTitle: {
     textDecorationLine: 'line-through',
     color: '#8E8E93',
+  },
+  priorityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  priorityText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   description: {
     fontSize: 14,
@@ -140,15 +177,28 @@ const styles = StyleSheet.create({
   completedDescription: {
     color: '#8E8E93',
   },
+  dateContainer: {
+    gap: 4,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  dateLabel: {
+    fontSize: 11,
+    color: '#8E8E93',
+    fontWeight: '500',
+  },
   date: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#8E8E93',
   },
-  actions: {
-    flexDirection: 'column',
-    gap: 12,
+  dueDate: {
+    color: '#FF9500',
+    fontWeight: '500',
   },
-  actionButton: {
-    padding: 4,
+  arrow: {
+    marginLeft: 8,
   },
 });

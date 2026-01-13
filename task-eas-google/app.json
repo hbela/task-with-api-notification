@@ -47,7 +47,8 @@
       ],
       "@react-native-google-signin/google-signin",
       "expo-secure-store",
-      "expo-notifications"
+      "expo-notifications",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

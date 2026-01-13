@@ -1,6 +1,7 @@
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 
@@ -8,6 +9,17 @@ import { useEffect } from 'react';
 GoogleSignin.configure({
   webClientId: process.env.EXPO_PUBLIC_WEB_CLIENT_ID,
   offlineAccess: true,
+});
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 30, // 30 minutes (formerly cacheTime)
+      retry: 1,
+    },
+  },
 });
 
 function RootLayoutNav() {
@@ -45,8 +57,10 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }

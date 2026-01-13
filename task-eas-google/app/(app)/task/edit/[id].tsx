@@ -1,41 +1,28 @@
 import ErrorMessage from '@/components/ErrorMessage';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TaskForm from '@/components/TaskForm';
-import { tasksApi } from '@/lib/api/tasks';
-import { Task, UpdateTaskInput } from '@/types/task';
+import { useTask, useUpdateTask } from '@/hooks/useTasksQuery';
+import { UpdateTaskInput } from '@/types/task';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 
 export default function EditTaskScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const [task, setTask] = useState<Task | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadTask();
-  }, [id]);
-
-  const loadTask = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const taskData = await tasksApi.getById(Number(id));
-      setTask(taskData);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load task');
-    } finally {
-      setLoading(false);
-    }
-  };
+  
+  // Fetch task data
+  const { data: task, isLoading, error } = useTask(Number(id));
+  
+  // Update mutation
+  const updateTaskMutation = useUpdateTask();
 
   const handleSubmit = async (data: UpdateTaskInput) => {
-    setSubmitting(true);
     try {
-      await tasksApi.update(Number(id), data);
+      await updateTaskMutation.mutateAsync({
+        id: Number(id),
+        data,
+      });
       
       Alert.alert(
         'Success',
@@ -43,7 +30,7 @@ export default function EditTaskScreen() {
         [
           {
             text: 'OK',
-            onPress: () => router.back()
+            onPress: () => router.push('/(app)')
           }
         ]
       );
@@ -52,8 +39,6 @@ export default function EditTaskScreen() {
         'Error',
         error.message || 'Failed to update task. Please try again.'
       );
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -61,15 +46,15 @@ export default function EditTaskScreen() {
     router.back();
   };
 
-  if (loading) {
+  if (isLoading) {
     return <LoadingSpinner message="Loading task..." />;
   }
 
   if (error || !task) {
     return (
       <ErrorMessage
-        message={error || 'Task not found'}
-        onRetry={loadTask}
+        message={error?.message || 'Task not found'}
+        onRetry={() => {}}
       />
     );
   }
@@ -80,15 +65,18 @@ export default function EditTaskScreen() {
         initialValues={{
           title: task.title,
           description: task.description || undefined,
+          priority: task.priority,
+          dueDate: task.dueDate || undefined,
         }}
         onSubmit={handleSubmit}
         onCancel={handleCancel}
         submitLabel="Update Task"
-        loading={submitting}
+        loading={updateTaskMutation.isPending}
       />
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

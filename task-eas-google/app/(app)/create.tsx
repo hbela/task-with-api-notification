@@ -1,20 +1,18 @@
 import AuthGuard from '@/components/AuthGuard';
 import TaskForm from '@/components/TaskForm';
-import { useTasks } from '@/hooks/useTasks';
-import { CreateTaskInput } from '@/types/task';
+import { useCreateTask } from '@/hooks/useTasksQuery';
+import { CreateTaskInput, UpdateTaskInput } from '@/types/task';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 
 export default function CreateTaskScreen() {
   const router = useRouter();
-  const { createTask } = useTasks();
-  const [loading, setLoading] = useState(false);
+  const createTaskMutation = useCreateTask();
 
-  const handleSubmit = async (data: CreateTaskInput) => {
-    setLoading(true);
+  const handleSubmit = async (data: CreateTaskInput | UpdateTaskInput) => {
     try {
-      await createTask(data);
+      await createTaskMutation.mutateAsync(data as CreateTaskInput);
       
       Alert.alert(
         'Success',
@@ -31,8 +29,6 @@ export default function CreateTaskScreen() {
         'Error',
         error.message || 'Failed to create task. Please try again.'
       );
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -42,7 +38,7 @@ export default function CreateTaskScreen() {
         <TaskForm
           onSubmit={handleSubmit}
           submitLabel="Create Task"
-          loading={loading}
+          loading={createTaskMutation.isPending}
         />
       </View>
     </AuthGuard>

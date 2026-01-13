@@ -5,9 +5,15 @@ import { authenticate } from '../middleware/auth';
 export async function taskRoutes(fastify: FastifyInstance) {
   /**
    * GET /tasks
-   * Get all tasks for authenticated user
+   * Get all tasks for authenticated user with optional filtering
    */
-  fastify.get(
+  fastify.get<{
+    Querystring: {
+      status?: 'pending' | 'completed';
+      page?: string;
+      limit?: string;
+    };
+  }>(
     '/tasks',
     {
       preHandler: [authenticate],
@@ -18,8 +24,22 @@ export async function taskRoutes(fastify: FastifyInstance) {
           return reply.code(401).send({ error: 'Not authenticated' });
         }
 
+        const { status } = request.query;
+
+        // Build where clause
+        const where: any = {
+          userId: request.currentUser.id,
+        };
+
+        // Add status filter if provided
+        if (status === 'completed') {
+          where.completed = true;
+        } else if (status === 'pending') {
+          where.completed = false;
+        }
+
         const tasks = await prisma.task.findMany({
-          where: { userId: request.currentUser.id },
+          where,
           orderBy: { createdAt: 'desc' },
         });
 
@@ -88,6 +108,9 @@ export async function taskRoutes(fastify: FastifyInstance) {
       title: string;
       description?: string;
       completed?: boolean;
+      priority?: string;
+      dueDate?: string;
+      notificationId?: string;
     };
   }>(
     '/tasks',
@@ -101,6 +124,9 @@ export async function taskRoutes(fastify: FastifyInstance) {
             title: { type: 'string', minLength: 1, maxLength: 255 },
             description: { type: 'string', maxLength: 1000 },
             completed: { type: 'boolean' },
+            priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'] },
+            dueDate: { type: 'string', format: 'date-time' },
+            notificationId: { type: 'string' },
           },
         },
       },
@@ -111,13 +137,16 @@ export async function taskRoutes(fastify: FastifyInstance) {
           return reply.code(401).send({ error: 'Not authenticated' });
         }
 
-        const { title, description, completed } = request.body;
+        const { title, description, completed, priority, dueDate, notificationId } = request.body;
 
         const task = await prisma.task.create({
           data: {
             title,
             description,
             completed: completed || false,
+            priority: priority || 'medium',
+            dueDate: dueDate ? new Date(dueDate) : null,
+            notificationId,
             userId: request.currentUser.id,
           },
         });
@@ -143,6 +172,9 @@ export async function taskRoutes(fastify: FastifyInstance) {
       title?: string;
       description?: string;
       completed?: boolean;
+      priority?: string;
+      dueDate?: string;
+      notificationId?: string;
     };
   }>(
     '/tasks/:id',
@@ -155,6 +187,9 @@ export async function taskRoutes(fastify: FastifyInstance) {
             title: { type: 'string', minLength: 1, maxLength: 255 },
             description: { type: 'string', maxLength: 1000 },
             completed: { type: 'boolean' },
+            priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'] },
+            dueDate: { type: 'string', format: 'date-time' },
+            notificationId: { type: 'string' },
           },
         },
       },
@@ -183,10 +218,18 @@ export async function taskRoutes(fastify: FastifyInstance) {
           return reply.code(404).send({ error: 'Task not found' });
         }
 
+        // Prepare update data
+        const updateData: any = { ...request.body };
+        
+        // Convert dueDate string to Date if provided
+        if (updateData.dueDate !== undefined) {
+          updateData.dueDate = updateData.dueDate ? new Date(updateData.dueDate) : null;
+        }
+
         // Update task
         const task = await prisma.task.update({
           where: { id: taskId },
-          data: request.body,
+          data: updateData,
         });
 
         return { task };

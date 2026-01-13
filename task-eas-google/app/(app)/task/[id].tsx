@@ -1,10 +1,9 @@
 import ErrorMessage from '@/components/ErrorMessage';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { tasksApi } from '@/lib/api/tasks';
-import { Task } from '@/types/task';
+import { useDeleteTask, useTask, useToggleTaskComplete } from '@/hooks/useTasksQuery';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
     Alert,
     ScrollView,
@@ -14,29 +13,32 @@ import {
     View,
 } from 'react-native';
 
+const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case 'urgent':
+      return '#FF3B30';
+    case 'high':
+      return '#FF9500';
+    case 'medium':
+      return '#007AFF';
+    case 'low':
+      return '#34C759';
+    default:
+      return '#8E8E93';
+  }
+};
+
+
 export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const [task, setTask] = useState<Task | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadTask();
-  }, [id]);
-
-  const loadTask = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const taskData = await tasksApi.getById(Number(id));
-      setTask(taskData);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load task');
-    } finally {
-      setLoading(false);
-    }
-  };
+  
+  // Fetch task with TanStack Query
+  const { data: task, isLoading, error, refetch } = useTask(Number(id));
+  
+  // Mutations
+  const deleteTaskMutation = useDeleteTask();
+  const toggleCompleteMutation = useToggleTaskComplete();
 
   const handleDelete = () => {
     Alert.alert(
@@ -49,8 +51,8 @@ export default function TaskDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await tasksApi.delete(Number(id));
-              router.back();
+              await deleteTaskMutation.mutateAsync(Number(id));
+              router.push('/(app)');
             } catch (err) {
               Alert.alert('Error', 'Failed to delete task');
             }
@@ -63,22 +65,26 @@ export default function TaskDetailScreen() {
   const handleToggleComplete = async () => {
     if (!task) return;
     try {
-      const updatedTask = await tasksApi.toggleComplete(task.id, !task.completed);
-      setTask(updatedTask);
+      await toggleCompleteMutation.mutateAsync({
+        id: task.id,
+        completed: !task.completed,
+      });
+      // Redirect to task list after toggling
+      router.push('/(app)');
     } catch (err) {
       Alert.alert('Error', 'Failed to update task');
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return <LoadingSpinner message="Loading task..." />;
   }
 
   if (error || !task) {
     return (
       <ErrorMessage
-        message={error || 'Task not found'}
-        onRetry={loadTask}
+        message={error?.message || 'Task not found'}
+        onRetry={() => refetch()}
       />
     );
   }
@@ -144,6 +150,48 @@ export default function TaskDetailScreen() {
           <Text style={styles.description}>{task.description}</Text>
         </View>
       )}
+
+      {/* Priority and Due Date Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Details</Text>
+        
+        <View style={styles.detailRow}>
+          <View style={styles.detailLabel}>
+            <Ionicons name="flag-outline" size={18} color="#8E8E93" />
+            <Text style={styles.detailLabelText}>Priority</Text>
+          </View>
+          <View style={[
+            styles.priorityBadge,
+            { backgroundColor: getPriorityColor(task.priority) + '20' }
+          ]}>
+            <Text style={[
+              styles.priorityText,
+              { color: getPriorityColor(task.priority) }
+            ]}>
+              {task.priority.toUpperCase()}
+            </Text>
+          </View>
+        </View>
+
+        {task.dueDate && (
+          <View style={styles.detailRow}>
+            <View style={styles.detailLabel}>
+              <Ionicons name="alarm-outline" size={18} color="#8E8E93" />
+              <Text style={styles.detailLabelText}>Due Date</Text>
+            </View>
+            <Text style={styles.detailValue}>
+              {new Date(task.dueDate).toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+              })}
+            </Text>
+          </View>
+        )}
+      </View>
 
       <View style={styles.actions}>
         <TouchableOpacity
@@ -256,6 +304,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: '#3C3C43',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  detailLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  detailLabelText: {
+    fontSize: 16,
+    color: '#1C1C1E',
+    fontWeight: '500',
+  },
+  detailValue: {
+    fontSize: 16,
+    color: '#3C3C43',
+  },
+  priorityBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  priorityText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   actions: {
     padding: 20,

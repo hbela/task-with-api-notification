@@ -84,7 +84,7 @@ class ApiClient {
     let accessToken = await this.getAccessToken();
 
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...(options.body && { 'Content-Type': 'application/json' }),
       ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
       ...(options.headers as Record<string, string>),
     };
