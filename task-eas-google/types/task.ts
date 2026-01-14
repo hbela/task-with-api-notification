@@ -9,6 +9,7 @@ export interface Task {
   userId: number;
   dueDate: string | null;
   notificationId: string | null;
+  reminderTimes: number[] | null; // Minutes before due date
   createdAt: string;
   updatedAt: string;
 }
@@ -19,6 +20,7 @@ export interface CreateTaskInput {
   completed?: boolean;
   priority?: TaskPriority;
   dueDate?: string;
+  reminderTimes?: number[]; // Minutes before due date
 }
 
 export interface UpdateTaskInput extends Partial<CreateTaskInput> {

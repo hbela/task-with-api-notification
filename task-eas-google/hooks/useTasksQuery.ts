@@ -1,4 +1,5 @@
 import { tasksApi } from '@/lib/api/tasks';
+import { notificationService } from '@/lib/notifications';
 import { PaginationParams } from '@/types/api';
 import { CreateTaskInput, Task, UpdateTaskInput } from '@/types/task';
 import {
@@ -45,7 +46,26 @@ export function useCreateTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateTaskInput) => tasksApi.create(data),
+    mutationFn: async (data: CreateTaskInput) => {
+      console.log('[useCreateTask] Creating task with data:', data);
+      const newTask = await tasksApi.create(data);
+      
+      // Schedule notifications if due date exists
+      if (newTask.dueDate) {
+        console.log('[useCreateTask] Task has due date, scheduling notifications...');
+        const dueDate = new Date(newTask.dueDate);
+        await notificationService.scheduleTaskReminder({
+          id: newTask.id,
+          title: newTask.title,
+          dueDate,
+          reminderTimes: data.reminderTimes,
+        });
+      } else {
+        console.log('[useCreateTask] Task has no due date, skipping notifications');
+      }
+      
+      return newTask;
+    },
     onSuccess: () => {
       // Invalidate all task lists to refetch
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
@@ -60,8 +80,41 @@ export function useUpdateTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateTaskInput }) =>
-      tasksApi.update(id, data),
+    mutationFn: async ({ id, data }: { id: number; data: UpdateTaskInput }) => {
+      console.log('[useUpdateTask] Updating task:', { id, data });
+      const updatedTask = await tasksApi.update(id, data);
+      
+      // Handle notifications if due date changed or removed
+      if (data.dueDate !== undefined) {
+        if (data.dueDate === null || !updatedTask.dueDate) {
+          // Due date removed, cancel notifications
+          console.log('[useUpdateTask] Due date removed, cancelling notifications');
+          await notificationService.cancelTaskReminders(id);
+        } else {
+          // Due date changed, reschedule notifications
+          console.log('[useUpdateTask] Due date changed, rescheduling notifications');
+          const dueDate = new Date(updatedTask.dueDate);
+          await notificationService.rescheduleTaskReminders({
+            id: updatedTask.id,
+            title: updatedTask.title,
+            dueDate,
+            reminderTimes: data.reminderTimes || updatedTask.reminderTimes || undefined,
+          });
+        }
+      } else if (data.reminderTimes && updatedTask.dueDate) {
+        // Only reminder times changed, reschedule
+        console.log('[useUpdateTask] Reminder times changed, rescheduling');
+        const dueDate = new Date(updatedTask.dueDate);
+        await notificationService.rescheduleTaskReminders({
+          id: updatedTask.id,
+          title: updatedTask.title,
+          dueDate,
+          reminderTimes: data.reminderTimes,
+        });
+      }
+      
+      return updatedTask;
+    },
     onSuccess: (updatedTask) => {
       // Invalidate all task lists
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
@@ -78,7 +131,13 @@ export function useDeleteTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: number) => tasksApi.delete(id),
+    mutationFn: async (id: number) => {
+      console.log('[useDeleteTask] Deleting task:', id);
+      // Cancel notifications first
+      await notificationService.cancelTaskReminders(id);
+      // Then delete the task
+      return tasksApi.delete(id);
+    },
     onSuccess: (_, id) => {
       // Invalidate all task lists
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });

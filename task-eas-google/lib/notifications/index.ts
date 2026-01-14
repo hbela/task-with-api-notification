@@ -1,213 +1,223 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { registerForPushNotifications } from './push';
+import { cancelTaskReminders, scheduleDailySummary, scheduleTaskReminders } from './scheduler';
 
-// Configure how notifications should be handled when app is in foreground
+// Configure notification behavior when app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
+/**
+ * Enhanced Notification Service with support for multiple reminders,
+ * push notifications, and improved configuration
+ */
 export class NotificationService {
+  private static instance: NotificationService;
+  private pushToken: string | null = null;
+
+  private constructor() {}
+
+  /**
+   * Get singleton instance
+   */
+  static getInstance(): NotificationService {
+    if (!NotificationService.instance) {
+      NotificationService.instance = new NotificationService();
+    }
+    return NotificationService.instance;
+  }
+
+  /**
+   * Initialize notification service
+   * Call this once when the app starts
+   */
+  async initialize(): Promise<NotificationService> {
+    try {
+      await this.requestPermissions();
+      await this.configureAndroidChannel();
+      
+      // Register for push notifications (for backup/server-initiated alerts)
+      this.pushToken = await registerForPushNotifications();
+      
+      console.log('Notification service initialized successfully');
+      return this;
+    } catch (error) {
+      console.error('Failed to initialize notification service:', error);
+      throw error;
+    }
+  }
+
   /**
    * Request notification permissions
    */
-  static async requestPermissions(): Promise<boolean> {
+  private async requestPermissions(): Promise<string> {
     if (!Device.isDevice) {
       console.warn('Notifications only work on physical devices');
-      return false;
+      return 'denied';
     }
 
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
     if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
+      const { status } = await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+          allowCriticalAlerts: true, // For iOS 12+
+        },
+      });
       finalStatus = status;
     }
 
     if (finalStatus !== 'granted') {
-      console.warn('Failed to get notification permissions');
-      return false;
+      console.warn('Notification permissions not granted');
+      // You might want to show a UI prompt here explaining why notifications are important
     }
 
-    // For Android, set notification channel
+    return finalStatus;
+  }
+
+  /**
+   * Configure Android notification channel
+   */
+  private async configureAndroidChannel(): Promise<void> {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('task-reminders', {
         name: 'Task Reminders',
-        importance: Notifications.AndroidImportance.HIGH,
+        importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#007AFF',
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        bypassDnd: true, // Bypass Do Not Disturb for important task reminders
         sound: 'default',
       });
+      console.log('Android notification channel configured');
     }
-
-    return true;
   }
 
   /**
-   * Schedule a notification for a task
-   * @param taskId - The task ID
-   * @param taskTitle - The task title
-   * @param dueDate - When the task is due (ISO string)
-   * @param reminderMinutes - How many minutes before due date to remind (default: 60)
+   * Schedule reminders for a task
+   * @param task - Task object with id, title, dueDate, and optional reminderTimes
+   * @returns Array of notification IDs
    */
-  static async scheduleTaskReminder(
-    taskId: number,
-    taskTitle: string,
-    dueDate: string,
-    reminderMinutes: number = 60
-  ): Promise<string | null> {
+  async scheduleTaskReminder(task: {
+    id: number;
+    title: string;
+    dueDate: Date;
+    description?: string;
+    reminderTimes?: number[]; // minutes before due date
+  }): Promise<string[]> {
     try {
-      const hasPermission = await this.requestPermissions();
-      if (!hasPermission) {
-        return null;
-      }
-
-      const dueDateTime = new Date(dueDate);
-      const reminderTime = new Date(dueDateTime.getTime() - reminderMinutes * 60 * 1000);
-
-      // Don't schedule if reminder time is in the past
-      if (reminderTime <= new Date()) {
-        console.log('Reminder time is in the past, skipping notification');
-        return null;
-      }
-
-      const notificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '📋 Task Due Soon',
-          body: `"${taskTitle}" is due in ${reminderMinutes} minutes`,
-          data: { 
-            taskId: taskId.toString(),
-            type: 'task-reminder'
-          },
-          sound: 'default',
-          priority: Notifications.AndroidNotificationPriority.HIGH,
-        },
-        trigger: {
-          date: reminderTime,
-          channelId: 'task-reminders',
-        },
-      });
-
-      // Store notification ID mapping
-      await this.saveNotificationMapping(taskId, notificationId);
-
-      return notificationId;
+      const notificationIds = await scheduleTaskReminders(task);
+      console.log(`Scheduled ${notificationIds.length} reminders for task ${task.id}`);
+      return notificationIds;
     } catch (error) {
-      console.error('Error scheduling notification:', error);
-      return null;
+      console.error('Failed to schedule task reminders:', error);
+      return [];
     }
   }
 
   /**
-   * Cancel a notification for a task
+   * Cancel all reminders for a task
    */
-  static async cancelTaskReminder(taskId: number): Promise<void> {
+  async cancelTaskReminders(taskId: number): Promise<void> {
     try {
-      const notificationId = await this.getNotificationId(taskId);
-      if (notificationId) {
-        await Notifications.cancelScheduledNotificationAsync(notificationId);
-        await this.removeNotificationMapping(taskId);
-      }
+      await cancelTaskReminders(taskId);
+      console.log(`Cancelled all reminders for task ${taskId}`);
     } catch (error) {
-      console.error('Error canceling notification:', error);
+      console.error('Failed to cancel task reminders:', error);
     }
   }
 
   /**
-   * Reschedule a notification (cancel old and create new)
+   * Reschedule reminders for a task (cancel old and create new)
    */
-  static async rescheduleTaskReminder(
-    taskId: number,
-    taskTitle: string,
-    dueDate: string,
-    reminderMinutes: number = 60
-  ): Promise<string | null> {
-    await this.cancelTaskReminder(taskId);
-    return this.scheduleTaskReminder(taskId, taskTitle, dueDate, reminderMinutes);
+  async rescheduleTaskReminders(task: {
+    id: number;
+    title: string;
+    dueDate: Date;
+    description?: string;
+    reminderTimes?: number[];
+  }): Promise<string[]> {
+    await this.cancelTaskReminders(task.id);
+    return this.scheduleTaskReminder(task);
+  }
+
+  /**
+   * Schedule daily summary notification
+   * @param hour - Hour of the day (0-23), default is 9 AM
+   */
+  async scheduleDailySummary(hour: number = 9): Promise<void> {
+    try {
+      await scheduleDailySummary(hour);
+      console.log(`Daily summary scheduled for ${hour}:00`);
+    } catch (error) {
+      console.error('Failed to schedule daily summary:', error);
+    }
   }
 
   /**
    * Get all scheduled notifications
    */
-  static async getAllScheduledNotifications() {
+  async getAllScheduledNotifications() {
     return await Notifications.getAllScheduledNotificationsAsync();
   }
 
   /**
-   * Cancel all notifications
+   * Cancel all scheduled notifications
    */
-  static async cancelAllNotifications(): Promise<void> {
+  async cancelAllNotifications(): Promise<void> {
     await Notifications.cancelAllScheduledNotificationsAsync();
-    await AsyncStorage.removeItem('notification_mappings');
-  }
-
-  /**
-   * Save notification ID mapping to AsyncStorage
-   */
-  private static async saveNotificationMapping(taskId: number, notificationId: string): Promise<void> {
-    try {
-      const mappings = await this.getNotificationMappings();
-      mappings[taskId.toString()] = notificationId;
-      await AsyncStorage.setItem('notification_mappings', JSON.stringify(mappings));
-    } catch (error) {
-      console.error('Error saving notification mapping:', error);
-    }
-  }
-
-  /**
-   * Get notification ID for a task
-   */
-  private static async getNotificationId(taskId: number): Promise<string | null> {
-    try {
-      const mappings = await this.getNotificationMappings();
-      return mappings[taskId.toString()] || null;
-    } catch (error) {
-      console.error('Error getting notification ID:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Remove notification mapping
-   */
-  private static async removeNotificationMapping(taskId: number): Promise<void> {
-    try {
-      const mappings = await this.getNotificationMappings();
-      delete mappings[taskId.toString()];
-      await AsyncStorage.setItem('notification_mappings', JSON.stringify(mappings));
-    } catch (error) {
-      console.error('Error removing notification mapping:', error);
-    }
-  }
-
-  /**
-   * Get all notification mappings
-   */
-  private static async getNotificationMappings(): Promise<Record<string, string>> {
-    try {
-      const mappingsJson = await AsyncStorage.getItem('notification_mappings');
-      return mappingsJson ? JSON.parse(mappingsJson) : {};
-    } catch (error) {
-      console.error('Error getting notification mappings:', error);
-      return {};
-    }
+    console.log('All notifications cancelled');
   }
 
   /**
    * Set up notification response listener (for when user taps notification)
+   * @param onNotificationTap - Callback function that receives the task ID
+   * @returns Subscription object (call .remove() to unsubscribe)
    */
-  static setupNotificationListener(onNotificationTap: (taskId: string) => void) {
+  setupNotificationListener(onNotificationTap: (taskId: string) => void) {
     return Notifications.addNotificationResponseReceivedListener((response) => {
       const taskId = response.notification.request.content.data.taskId as string;
       if (taskId) {
+        console.log('Notification tapped for task:', taskId);
         onNotificationTap(taskId);
       }
     });
   }
+
+  /**
+   * Get the push token (if registered)
+   */
+  getPushToken(): string | null {
+    return this.pushToken;
+  }
 }
+
+// Export singleton instance
+export const notificationService = NotificationService.getInstance();
+
+// Re-export utilities for convenience
+export {
+    cancelTaskReminders, DEFAULT_REMINDER_OPTIONS, DEFAULT_REMINDERS, getReminderLabel, scheduleDailySummary, scheduleTaskReminders
+} from './scheduler';
+
+export {
+    registerForPushNotifications, removePushTokenFromServer, sendPushTokenToServer
+} from './push';
+
+// Debug utilities
+export {
+    debugNotifications,
+    sendTestNotification
+} from './debug';

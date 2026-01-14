@@ -39,18 +39,13 @@ export default function AppLayout() {
           fontWeight: '600',
         },
         headerRight: () => (
-          <TouchableOpacity
-            onPress={handleLogout}
-            style={{ marginRight: 15 }}
-          >
-            <Ionicons name="log-out-outline" size={24} color="#007AFF" />
-          </TouchableOpacity>
-        ),
-        headerLeft: () => (
-          <View style={{ marginLeft: 15 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 15 }}>
             <Text style={{ fontSize: 14, color: '#666' }}>
               Hi, {user?.name?.split(' ')[0] || 'User'}
             </Text>
+            <TouchableOpacity onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={24} color="#007AFF" />
+            </TouchableOpacity>
           </View>
         ),
       }}
@@ -59,6 +54,7 @@ export default function AppLayout() {
         name="index"
         options={{
           title: 'Tasks',
+          headerShown: false, // Hide default header, we'll create custom one
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list" size={size} color={color} />
           ),
@@ -86,6 +82,7 @@ export default function AppLayout() {
         name="task"
         options={{
           href: null, // Hide from tab bar
+          title: '', // Remove header text
         }}
       />
     </Tabs>

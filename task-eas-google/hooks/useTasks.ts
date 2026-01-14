@@ -1,4 +1,5 @@
 import { tasksApi } from '@/lib/api/tasks';
+import { notificationService } from '@/lib/notifications';
 import { PaginationParams } from '@/types/api';
 import { CreateTaskInput, Task, UpdateTaskInput } from '@/types/task';
 import { useCallback, useState } from 'react';
@@ -95,12 +96,24 @@ export const useTasks = (): UseTasksReturnType => {
     setError(null);
 
     try {
+      // 1. Create task in backend
       const newTask = await tasksApi.create(data);
       
-      // Add new task to the beginning of the list
+      // 2. Schedule notifications if due date exists
+      if (newTask.dueDate) {
+        const dueDate = new Date(newTask.dueDate);
+        await notificationService.scheduleTaskReminder({
+          id: newTask.id,
+          title: newTask.title,
+          dueDate,
+          reminderTimes: data.reminderTimes,
+        });
+      }
+
+      // 3. Add new task to the beginning of the list
       setTasks(prev => [newTask, ...prev]);
       
-      // Update total count
+      // 4. Update total count
       setPagination(prev => ({
         ...prev,
         total: prev.total + 1
@@ -124,9 +137,36 @@ export const useTasks = (): UseTasksReturnType => {
     setError(null);
 
     try {
+      // 1. Update task in backend
       const updatedTask = await tasksApi.update(id, data);
       
-      // Update task in the list
+      // 2. Handle notifications if due date changed or removed
+      if (data.dueDate !== undefined) {
+        if (data.dueDate === null || !updatedTask.dueDate) {
+          // Due date removed, cancel notifications
+          await notificationService.cancelTaskReminders(id);
+        } else {
+          // Due date changed, reschedule notifications
+          const dueDate = new Date(updatedTask.dueDate);
+          await notificationService.rescheduleTaskReminders({
+            id: updatedTask.id,
+            title: updatedTask.title,
+            dueDate,
+            reminderTimes: data.reminderTimes || updatedTask.reminderTimes || undefined,
+          });
+        }
+      } else if (data.reminderTimes && updatedTask.dueDate) {
+        // Only reminder times changed, reschedule
+        const dueDate = new Date(updatedTask.dueDate);
+        await notificationService.rescheduleTaskReminders({
+          id: updatedTask.id,
+          title: updatedTask.title,
+          dueDate,
+          reminderTimes: data.reminderTimes,
+        });
+      }
+      
+      // 3. Update task in the list
       setTasks(prev => prev.map(task => 
         task.id === id ? { ...task, ...updatedTask } : task
       ));
@@ -149,12 +189,16 @@ export const useTasks = (): UseTasksReturnType => {
     setError(null);
 
     try {
+      // 1. Cancel notifications
+      await notificationService.cancelTaskReminders(id);
+      
+      // 2. Delete from backend
       await tasksApi.delete(id);
       
-      // Remove task from the list
+      // 3. Remove task from the list
       setTasks(prev => prev.filter(task => task.id !== id));
       
-      // Update total count
+      // 4. Update total count
       setPagination(prev => ({
         ...prev,
         total: Math.max(0, prev.total - 1)

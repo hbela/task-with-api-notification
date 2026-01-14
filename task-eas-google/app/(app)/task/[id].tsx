@@ -1,6 +1,7 @@
 import ErrorMessage from '@/components/ErrorMessage';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useDeleteTask, useTask, useToggleTaskComplete } from '@/hooks/useTasksQuery';
+import { getStatusColor, getStatusLabel, getTaskStatus } from '@/lib/taskUtils';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
@@ -89,6 +90,10 @@ export default function TaskDetailScreen() {
     );
   }
 
+  const taskStatus = getTaskStatus(task);
+  const statusColor = getStatusColor(taskStatus);
+  const statusLabel = getStatusLabel(taskStatus);
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
@@ -137,9 +142,9 @@ export default function TaskDetailScreen() {
         <View style={styles.statusBadge}>
           <Text style={[
             styles.statusText,
-            task.completed ? styles.statusCompleted : styles.statusPending
+            { backgroundColor: statusColor + '20', color: statusColor }
           ]}>
-            {task.completed ? 'Completed' : 'Pending'}
+            {statusLabel}
           </Text>
         </View>
       </View>

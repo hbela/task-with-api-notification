@@ -1,3 +1,4 @@
+import { DEFAULT_REMINDER_OPTIONS, DEFAULT_REMINDERS, getReminderLabel } from '@/lib/notifications';
 import { CreateTaskInput, TaskPriority, UpdateTaskInput } from '@/types/task';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -7,6 +8,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -20,6 +22,7 @@ interface TaskFormProps {
     description?: string;
     priority?: TaskPriority;
     dueDate?: string;
+    reminderTimes?: number[];
   };
   onSubmit: (data: CreateTaskInput | UpdateTaskInput) => Promise<void>;
   onCancel?: () => void;
@@ -43,6 +46,10 @@ export default function TaskForm({
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [enableReminders, setEnableReminders] = useState(!!initialValues?.dueDate);
+  const [reminderTimes, setReminderTimes] = useState<number[]>(
+    initialValues?.reminderTimes || DEFAULT_REMINDERS
+  );
   const [errors, setErrors] = useState<{ title?: string }>({});
 
   const priorities: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
@@ -79,6 +86,7 @@ export default function TaskForm({
       description: description.trim() || undefined,
       priority,
       ...(dueDate && { dueDate: dueDate.toISOString() }),
+      ...(dueDate && enableReminders && { reminderTimes }),
     };
 
     try {
@@ -88,6 +96,8 @@ export default function TaskForm({
       setDescription('');
       setPriority('medium');
       setDueDate(undefined);
+      setEnableReminders(false);
+      setReminderTimes(DEFAULT_REMINDERS);
       setErrors({});
     } catch (error) {
       // Error handling is done by parent component
@@ -257,6 +267,69 @@ export default function TaskForm({
           )}
         </View>
 
+        {/* Reminder Times Selector */}
+        {dueDate && (
+          <View style={styles.inputGroup}>
+            <View style={styles.reminderHeader}>
+              <Text style={styles.label}>Reminders</Text>
+              <Switch
+                value={enableReminders}
+                onValueChange={setEnableReminders}
+                disabled={loading}
+              />
+            </View>
+
+            {enableReminders && (
+              <View style={styles.reminderOptionsContainer}>
+                <Text style={styles.reminderHint}>
+                  Select when you'd like to be reminded:
+                </Text>
+                <View style={styles.reminderOptions}>
+                  {DEFAULT_REMINDER_OPTIONS.map((minutes) => {
+                    const isSelected = reminderTimes.includes(minutes);
+                    const label = getReminderLabel(minutes);
+                    
+                    return (
+                      <TouchableOpacity
+                        key={minutes}
+                        style={[
+                          styles.reminderOption,
+                          isSelected && styles.reminderOptionSelected
+                        ]}
+                        onPress={() => {
+                          if (isSelected) {
+                            setReminderTimes(prev => prev.filter(m => m !== minutes));
+                          } else {
+                            setReminderTimes(prev => [...prev, minutes].sort((a, b) => a - b));
+                          }
+                        }}
+                        disabled={loading}
+                      >
+                        <Ionicons 
+                          name={isSelected ? "checkmark-circle" : "ellipse-outline"} 
+                          size={20} 
+                          color={isSelected ? "#007AFF" : "#8E8E93"} 
+                        />
+                        <Text style={[
+                          styles.reminderOptionText,
+                          isSelected && styles.reminderOptionTextSelected
+                        ]}>
+                          {label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                {reminderTimes.length === 0 && (
+                  <Text style={styles.reminderWarning}>
+                    ⚠️ Select at least one reminder time
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Action Buttons */}
         <View style={styles.actions}>
           <TouchableOpacity
@@ -407,5 +480,51 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
+  },
+  reminderHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  reminderOptionsContainer: {
+    marginTop: 8,
+  },
+  reminderHint: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginBottom: 12,
+  },
+  reminderOptions: {
+    gap: 8,
+  },
+  reminderOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    backgroundColor: 'white',
+  },
+  reminderOptionSelected: {
+    backgroundColor: '#E8F4FF',
+    borderColor: '#007AFF',
+  },
+  reminderOptionText: {
+    fontSize: 14,
+    color: '#1C1C1E',
+  },
+  reminderOptionTextSelected: {
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  reminderWarning: {
+    fontSize: 14,
+    color: '#FF9500',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

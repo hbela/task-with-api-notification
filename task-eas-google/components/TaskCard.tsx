@@ -1,11 +1,12 @@
+import { isTaskOverdue } from '@/lib/taskUtils';
 import { Task } from '@/types/task';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 interface TaskCardProps {
@@ -46,9 +47,15 @@ export default function TaskCard({
   onPress,
   onToggleComplete
 }: TaskCardProps) {
+  const isOverdue = isTaskOverdue(task);
+  
   return (
     <TouchableOpacity
-      style={[styles.card, task.completed && styles.completedCard]}
+      style={[
+        styles.card, 
+        task.completed && styles.completedCard,
+        isOverdue && styles.overdueCard
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -60,9 +67,9 @@ export default function TaskCard({
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons
-            name={task.completed ? 'checkmark-circle' : 'ellipse-outline'}
+            name={task.completed ? 'checkmark-circle' : (isOverdue ? 'alert-circle' : 'ellipse-outline')}
             size={28}
-            color={task.completed ? '#34C759' : '#C7C7CC'}
+            color={task.completed ? '#34C759' : (isOverdue ? '#FF3B30' : '#C7C7CC')}
           />
         </TouchableOpacity>
 
@@ -100,9 +107,18 @@ export default function TaskCard({
             
             {task.dueDate && (
               <View style={styles.dateRow}>
-                <Ionicons name="alarm-outline" size={12} color="#FF9500" />
-                <Text style={styles.dateLabel}>Due:</Text>
-                <Text style={[styles.date, styles.dueDate]}>{formatDateTime(task.dueDate)}</Text>
+                <Ionicons 
+                  name={isOverdue ? "alert-circle" : "alarm-outline"} 
+                  size={12} 
+                  color={isOverdue ? "#FF3B30" : "#FF9500"} 
+                />
+                <Text style={styles.dateLabel}>{isOverdue ? 'Overdue:' : 'Due:'}</Text>
+                <Text style={[
+                  styles.date, 
+                  isOverdue ? styles.overdueDate : styles.dueDate
+                ]}>
+                  {formatDateTime(task.dueDate)}
+                </Text>
               </View>
             )}
           </View>
@@ -197,6 +213,14 @@ const styles = StyleSheet.create({
   dueDate: {
     color: '#FF9500',
     fontWeight: '500',
+  },
+  overdueCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF3B30',
+  },
+  overdueDate: {
+    color: '#FF3B30',
+    fontWeight: '600',
   },
   arrow: {
     marginLeft: 8,

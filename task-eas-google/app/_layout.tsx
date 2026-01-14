@@ -27,6 +27,48 @@ function RootLayoutNav() {
   const segments = useSegments();
   const router = useRouter();
 
+  // Initialize notifications
+  useEffect(() => {
+    const initNotifications = async () => {
+      try {
+        const { notificationService } = await import('@/lib/notifications');
+        await notificationService.initialize();
+        
+        // Schedule daily summary at 9 AM
+        await notificationService.scheduleDailySummary(9);
+        
+        console.log('Notifications initialized successfully');
+      } catch (error) {
+        console.error('Failed to initialize notifications:', error);
+      }
+    };
+
+    initNotifications();
+  }, []);
+
+  // Handle notification taps
+  useEffect(() => {
+    const setupNotificationHandler = async () => {
+      try {
+        const { notificationService } = await import('@/lib/notifications');
+        
+        const subscription = notificationService.setupNotificationListener((taskId) => {
+          console.log('Notification tapped for task:', taskId);
+          // Navigate to task detail or task list
+          router.push('/(app)');
+        });
+
+        return () => {
+          subscription.remove();
+        };
+      } catch (error) {
+        console.error('Failed to setup notification handler:', error);
+      }
+    };
+
+    setupNotificationHandler();
+  }, [router]);
+
   useEffect(() => {
     if (!initialized) return;
 

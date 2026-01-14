@@ -2,6 +2,8 @@ import ErrorMessage from '@/components/ErrorMessage';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TaskCard from '@/components/TaskCard';
 import { useDeleteTask, useTasks, useToggleTaskComplete } from '@/hooks/useTasksQuery';
+import { useAuth } from '@/lib/auth';
+import { isTaskOverdue } from '@/lib/taskUtils';
 import { Task } from '@/types/task';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -19,12 +21,13 @@ import {
 
 export default function TasksScreen() {
   const router = useRouter();
+  const { user, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'overdue' | 'completed'>('pending');
 
   // Fetch tasks with TanStack Query
   const { data, isLoading, error, refetch, isRefetching } = useTasks({
-    status: filter === 'all' ? undefined : filter,
+    status: filter === 'all' || filter === 'overdue' ? undefined : filter,
   });
 
   // Mutations
@@ -32,6 +35,27 @@ export default function TasksScreen() {
   const toggleCompleteMutation = useToggleTaskComplete();
 
   const tasks = data?.tasks || [];
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const handleDelete = (task: Task) => {
     Alert.alert(
@@ -66,9 +90,23 @@ export default function TasksScreen() {
   };
 
   const filteredTasks = tasks.filter(task => {
+    // Search filter
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          task.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
+    
+    if (!matchesSearch) return false;
+
+    // Status filter
+    if (filter === 'pending') {
+      // Pending: not completed AND not overdue
+      return !task.completed && !isTaskOverdue(task);
+    } else if (filter === 'overdue') {
+      // Overdue: not completed AND overdue
+      return !task.completed && isTaskOverdue(task);
+    }
+    
+    // 'all' and 'completed' filters handled by backend
+    return true;
   });
 
   const renderTask = ({ item }: { item: Task }) => (
@@ -90,9 +128,11 @@ export default function TasksScreen() {
           {searchQuery
             ? 'No tasks match your search'
             : filter === 'completed' 
-            ? 'No completed tasks yet'
+            ? 'No done tasks yet'
             : filter === 'pending'
             ? 'No pending tasks'
+            : filter === 'overdue'
+            ? 'No overdue tasks'
             : 'No tasks yet. Create your first task!'}
         </Text>
         {!searchQuery && filter === 'all' && (
@@ -122,6 +162,27 @@ export default function TasksScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Custom Header */}
+      <View style={styles.customHeader}>
+        {/* Top Row: User Info and Logout */}
+        <View style={styles.topRow}>
+          <View style={{ flex: 1 }} />
+          <View style={styles.userSection}>
+            <Text style={styles.welcomeText}>
+              Hi, {user?.name?.split(' ')[0] || 'User'}
+            </Text>
+            <TouchableOpacity onPress={handleLogout} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="log-out-outline" size={24} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        {/* Title Row: Centered */}
+        <View style={styles.titleRow}>
+          <Text style={styles.pageTitle}>Tasks</Text>
+        </View>
+      </View>
+
       {/* Search and Filter Bar */}
       <View style={styles.header}>
         <View style={styles.searchContainer}>
@@ -141,7 +202,7 @@ export default function TasksScreen() {
 
         {/* Filter Chips */}
         <View style={styles.filterContainer}>
-          {(['all', 'pending', 'completed'] as const).map((filterType) => (
+          {(['all', 'pending', 'overdue', 'completed'] as const).map((filterType) => (
             <TouchableOpacity
               key={filterType}
               onPress={() => setFilter(filterType)}
@@ -154,7 +215,10 @@ export default function TasksScreen() {
                 styles.filterChipText,
                 filter === filterType && styles.filterChipTextActive
               ]}>
-                {filterType.charAt(0).toUpperCase() + filterType.slice(1)}
+                {filterType === 'completed' 
+                  ? 'Done' 
+                  : filterType.charAt(0).toUpperCase() + filterType.slice(1)
+                }
               </Text>
             </TouchableOpacity>
           ))}
@@ -190,6 +254,37 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F7',
+  },
+  customHeader: {
+    backgroundColor: 'white',
+    paddingTop: 50, // Account for status bar
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  userSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  welcomeText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  titleRow: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1C1C1E',
   },
   header: {
     padding: 16,
