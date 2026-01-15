@@ -43,7 +43,7 @@ export default function EditTaskScreen() {
   };
 
   const handleCancel = () => {
-    router.back();
+    router.push('/(app)');
   };
 
   if (isLoading) {

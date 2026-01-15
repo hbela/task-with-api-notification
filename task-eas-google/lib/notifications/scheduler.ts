@@ -74,6 +74,8 @@ export async function scheduleTaskReminders(task: Task): Promise<string[]> {
           sound: 'default',
           categoryIdentifier: 'TASK_REMINDER',
           priority: Notifications.AndroidNotificationPriority.HIGH,
+          sticky: false, // Allow user to dismiss
+          autoDismiss: true, // Auto-dismiss after timeout
           // iOS 15+ interruption level
           ...(Platform.OS === 'ios' && {
             interruptionLevel: 'timeSensitive' as any,
@@ -171,7 +173,6 @@ export async function scheduleDailySummary(hour: number = 9) {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour,
         minute: 0,
-        repeats: true,
         channelId: 'task-reminders',
       },
     });

@@ -79,6 +79,15 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="notification-qa"
+        options={{
+          title: 'QA Test',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="flask" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="task"
         options={{
           href: null, // Hide from tab bar

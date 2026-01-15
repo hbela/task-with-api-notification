@@ -7,9 +7,8 @@ import { cancelTaskReminders, scheduleDailySummary, scheduleTaskReminders } from
 // Configure notification behavior when app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
-    shouldSetBadge: true,
+    shouldSetBadge: false,
     shouldShowBanner: true,
     shouldShowList: true,
   }),
@@ -100,6 +99,8 @@ export class NotificationService {
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
         bypassDnd: true, // Bypass Do Not Disturb for important task reminders
         sound: 'default',
+        enableVibrate: true,
+        showBadge: false, // Consistent with shouldSetBadge: false
       });
       console.log('Android notification channel configured');
     }
