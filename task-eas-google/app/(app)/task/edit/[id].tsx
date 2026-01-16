@@ -67,6 +67,8 @@ export default function EditTaskScreen() {
           description: task.description || undefined,
           priority: task.priority,
           dueDate: task.dueDate || undefined,
+          reminderTimes: task.reminderTimes || undefined,
+          contactId: task.contactId || undefined,
         }}
         onSubmit={handleSubmit}
         onCancel={handleCancel}

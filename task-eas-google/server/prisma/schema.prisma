@@ -58,6 +58,16 @@ model Task {
   dueDate        DateTime?
   notificationId String?
   reminderTimes  Int[]     @default([60, 1440]) // Minutes before due date: [1 hour, 1 day]
+  
+  // Device contact reference (stores device contact ID, not a DB relation)
+  // Contact details are fetched from device on-demand using expo-contacts
+  contactId      String?   // Device contact ID from expo-contacts
+  
+  // Task location (can be different from contact address)
+  taskAddress    String?
+  latitude       Float?
+  longitude      Float?
+  
   userId         Int
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -66,6 +76,7 @@ model Task {
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([contactId])
   @@index([completed])
   @@index([priority])
   @@index([dueDate])

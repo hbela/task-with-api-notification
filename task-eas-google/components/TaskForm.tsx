@@ -4,16 +4,18 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
+import ContactDisplay from './ContactDisplay';
+import ContactSearchButton from './ContactSearchButton';
 
 
 interface TaskFormProps {
@@ -23,6 +25,7 @@ interface TaskFormProps {
     priority?: TaskPriority;
     dueDate?: string;
     reminderTimes?: number[];
+    contactId?: string | null;
   };
   onSubmit: (data: CreateTaskInput | UpdateTaskInput) => Promise<void>;
   onCancel?: () => void;
@@ -49,6 +52,9 @@ export default function TaskForm({
   const [enableReminders, setEnableReminders] = useState(!!initialValues?.dueDate);
   const [reminderTimes, setReminderTimes] = useState<number[]>(
     initialValues?.reminderTimes || DEFAULT_REMINDERS
+  );
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(
+    initialValues?.contactId || null
   );
   const [errors, setErrors] = useState<{ title?: string }>({});
 
@@ -87,6 +93,7 @@ export default function TaskForm({
       priority,
       ...(dueDate && { dueDate: dueDate.toISOString() }),
       ...(dueDate && enableReminders && { reminderTimes }),
+      ...(selectedContactId && { contactId: selectedContactId }),
     };
 
     try {
@@ -98,6 +105,7 @@ export default function TaskForm({
       setDueDate(undefined);
       setEnableReminders(false);
       setReminderTimes(DEFAULT_REMINDERS);
+      setSelectedContactId(null);
       setErrors({});
     } catch (error) {
       // Error handling is done by parent component
@@ -170,6 +178,31 @@ export default function TaskForm({
             textAlignVertical="top"
             editable={!loading}
           />
+        </View>
+
+        {/* Contact Selector */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Contact (Optional)</Text>
+          
+          {selectedContactId ? (
+            <View>
+              <ContactDisplay contactId={selectedContactId} showActions={false} />
+              <TouchableOpacity
+                style={styles.removeContactButton}
+                onPress={() => setSelectedContactId(null)}
+                disabled={loading}
+              >
+                <Ionicons name="close-circle" size={20} color="#FF3B30" />
+                <Text style={styles.removeContactText}>Remove Contact</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <ContactSearchButton
+              onContactSelect={(contactId) => setSelectedContactId(contactId)}
+              selectedContactId={selectedContactId}
+              disabled={loading}
+            />
+          )}
         </View>
 
         {/* Priority Selector */}
@@ -526,5 +559,21 @@ const styles = StyleSheet.create({
     color: '#FF9500',
     marginTop: 8,
     textAlign: 'center',
+  },
+  removeContactButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#FFF3F3',
+    marginTop: 8,
+  },
+  removeContactText: {
+    fontSize: 14,
+    color: '#FF3B30',
+    fontWeight: '500',
   },
 });

@@ -111,6 +111,10 @@ export async function taskRoutes(fastify: FastifyInstance) {
       priority?: string;
       dueDate?: string;
       notificationId?: string;
+      contactId?: string;
+      taskAddress?: string;
+      latitude?: number;
+      longitude?: number;
     };
   }>(
     '/tasks',
@@ -127,6 +131,10 @@ export async function taskRoutes(fastify: FastifyInstance) {
             priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'] },
             dueDate: { type: 'string', format: 'date-time' },
             notificationId: { type: 'string' },
+            contactId: { type: 'string' },
+            taskAddress: { type: 'string', maxLength: 500 },
+            latitude: { type: 'number' },
+            longitude: { type: 'number' },
           },
         },
       },
@@ -137,7 +145,10 @@ export async function taskRoutes(fastify: FastifyInstance) {
           return reply.code(401).send({ error: 'Not authenticated' });
         }
 
-        const { title, description, completed, priority, dueDate, notificationId } = request.body;
+        const { title, description, completed, priority, dueDate, notificationId, contactId, taskAddress, latitude, longitude } = request.body;
+
+        // contactId is now a device contact ID (string), no validation needed
+        // Contact details will be fetched from device on-demand
 
         const task = await prisma.task.create({
           data: {
@@ -147,6 +158,10 @@ export async function taskRoutes(fastify: FastifyInstance) {
             priority: priority || 'medium',
             dueDate: dueDate ? new Date(dueDate) : null,
             notificationId,
+            contactId: contactId || null,
+            taskAddress,
+            latitude,
+            longitude,
             userId: request.currentUser.id,
           },
         });
@@ -175,6 +190,10 @@ export async function taskRoutes(fastify: FastifyInstance) {
       priority?: string;
       dueDate?: string;
       notificationId?: string;
+      contactId?: string | null;
+      taskAddress?: string;
+      latitude?: number;
+      longitude?: number;
     };
   }>(
     '/tasks/:id',
@@ -190,6 +209,10 @@ export async function taskRoutes(fastify: FastifyInstance) {
             priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'] },
             dueDate: { type: 'string', format: 'date-time' },
             notificationId: { type: 'string' },
+            contactId: { type: ['string', 'null'] },
+            taskAddress: { type: 'string', maxLength: 500 },
+            latitude: { type: 'number' },
+            longitude: { type: 'number' },
           },
         },
       },
@@ -225,6 +248,9 @@ export async function taskRoutes(fastify: FastifyInstance) {
         if (updateData.dueDate !== undefined) {
           updateData.dueDate = updateData.dueDate ? new Date(updateData.dueDate) : null;
         }
+
+        // contactId is now a device contact ID (string), no validation needed
+        // Contact details will be fetched from device on-demand
 
         // Update task
         const task = await prisma.task.update({

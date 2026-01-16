@@ -88,6 +88,12 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="contacts"
+        options={{
+          href: null, // Hidden - contacts are managed via device, not in app
+        }}
+      />
+      <Tabs.Screen
         name="task"
         options={{
           href: null, // Hide from tab bar

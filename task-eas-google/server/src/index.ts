@@ -4,6 +4,7 @@ import jwt from '@fastify/jwt';
 import dotenv from 'dotenv';
 import Fastify from 'fastify';
 import { authRoutes } from './routes/auth';
+import { contactRoutes } from './routes/contacts';
 import { taskRoutes } from './routes/tasks';
 
 // Load environment variables
@@ -105,6 +106,15 @@ async function registerRoutes() {
           update: 'PATCH /tasks/:id - Update task (protected)',
           delete: 'DELETE /tasks/:id - Delete task (protected)',
         },
+        contacts: {
+          list: 'GET /contacts - Get all contacts (protected)',
+          get: 'GET /contacts/:id - Get contact by ID (protected)',
+          create: 'POST /contacts - Create new contact (protected)',
+          update: 'PATCH /contacts/:id - Update contact (protected)',
+          delete: 'DELETE /contacts/:id - Delete contact (protected)',
+          updateSync: 'PATCH /contacts/:id/sync - Update sync status (protected)',
+          searchByPhone: 'GET /contacts/search/phone - Search by phone (protected)',
+        },
       },
     };
   });
@@ -114,6 +124,9 @@ async function registerRoutes() {
 
   // Register task routes
   await fastify.register(taskRoutes);
+
+  // Register contact routes
+  await fastify.register(contactRoutes);
 }
 
 // Start server
@@ -152,6 +165,15 @@ const start = async () => {
     console.log('  ✓ POST   /tasks - Create task');
     console.log('  ✓ PATCH  /tasks/:id - Update task');
     console.log('  ✓ DELETE /tasks/:id - Delete task');
+    console.log('');
+    console.log('👥 Contacts (Protected):');
+    console.log('  ✓ GET    /contacts - List all contacts');
+    console.log('  ✓ GET    /contacts/:id - Get contact');
+    console.log('  ✓ POST   /contacts - Create contact');
+    console.log('  ✓ PATCH  /contacts/:id - Update contact');
+    console.log('  ✓ DELETE /contacts/:id - Delete contact');
+    console.log('  ✓ PATCH  /contacts/:id/sync - Update sync status');
+    console.log('  ✓ GET    /contacts/search/phone - Search by phone');
     console.log('');
   } catch (err) {
     fastify.log.error(err);

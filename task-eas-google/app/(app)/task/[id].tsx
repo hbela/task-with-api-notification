@@ -1,3 +1,4 @@
+import ContactDisplay from '@/components/ContactDisplay';
 import ErrorMessage from '@/components/ErrorMessage';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useDeleteTask, useTask, useToggleTaskComplete } from '@/hooks/useTasksQuery';
@@ -197,6 +198,14 @@ export default function TaskDetailScreen() {
           </View>
         )}
       </View>
+
+      {/* Contact Section */}
+      {task.contactId && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Contact</Text>
+          <ContactDisplay contactId={task.contactId} showActions={true} />
+        </View>
+      )}
 
       <View style={styles.actions}>
         <TouchableOpacity
