@@ -1,3 +1,4 @@
+import { useTranslation } from '@/hooks/useTranslation';
 import { Ionicons } from '@expo/vector-icons';
 import * as Contacts from 'expo-contacts';
 import React, { useState } from 'react';
@@ -32,6 +33,7 @@ export default function ContactSearchButton({
   selectedContactId,
   disabled = false,
 }: ContactSearchButtonProps) {
+  const { t } = useTranslation();
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Contact[]>([]);
@@ -42,11 +44,11 @@ export default function ContactSearchButton({
     const { status } = await Contacts.requestPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
-        'Permission Required',
-        'Please grant contacts permission to search for contacts.',
+        t('contacts.permissionRequired'),
+        t('contacts.permissionMessage'),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('contacts.openSettings'), onPress: () => Linking.openSettings() },
         ]
       );
       return false;
@@ -92,7 +94,7 @@ export default function ContactSearchButton({
       setSearchResults(filtered);
     } catch (error) {
       console.error('Error searching contacts:', error);
-      Alert.alert('Error', 'Failed to search contacts. Please try again.');
+      Alert.alert(t('common.error'), t('contacts.searchError'));
     } finally {
       setSearching(false);
     }
@@ -116,12 +118,12 @@ export default function ContactSearchButton({
   const handleCreateContact = () => {
     setModalVisible(false);
     Alert.alert(
-      'Create Contact',
-      'Please use your device\'s Contacts app to create a new contact.',
+      t('contacts.createContact'),
+      t('contacts.createContactHint'),
       [
-        { text: 'OK' },
+        { text: t('common.done') },
         {
-          text: 'Open Contacts',
+          text: t('contacts.openContacts'),
           onPress: () => {
             // On Android, we can try to open the contacts app
             if (Platform.OS === 'android') {
@@ -153,7 +155,7 @@ export default function ContactSearchButton({
           </Text>
         </View>
         <View style={styles.contactInfo}>
-          <Text style={styles.contactName}>{item.name || 'Unknown'}</Text>
+          <Text style={styles.contactName}>{item.name || t('contacts.unknown')}</Text>
           {phone && (
             <Text style={styles.contactDetail}>
               <Ionicons name="call-outline" size={12} color="#666" /> {phone}
@@ -179,7 +181,7 @@ export default function ContactSearchButton({
       >
         <Ionicons name="search" size={20} color="#007AFF" />
         <Text style={styles.searchButtonText}>
-          {selectedContactId ? 'Change Contact' : 'Search Contact'}
+          {selectedContactId ? t('contacts.change') : t('contacts.search')}
         </Text>
       </TouchableOpacity>
 
@@ -194,7 +196,7 @@ export default function ContactSearchButton({
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Ionicons name="close" size={28} color="#007AFF" />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Search Contact</Text>
+            <Text style={styles.modalTitle}>{t('contacts.searchTitle')}</Text>
             <View style={{ width: 28 }} />
           </View>
 
@@ -202,7 +204,7 @@ export default function ContactSearchButton({
             <Ionicons name="search" size={20} color="#8E8E93" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search by name, phone, or email"
+              placeholder={t('contacts.searchPlaceholder')}
               value={searchQuery}
               onChangeText={(text) => {
                 setSearchQuery(text);
@@ -222,23 +224,23 @@ export default function ContactSearchButton({
 
           {searching && (
             <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Searching...</Text>
+              <Text style={styles.loadingText}>{t('contacts.searching')}</Text>
             </View>
           )}
 
           {!searching && searchQuery && searchResults.length === 0 && (
             <View style={styles.emptyContainer}>
               <Ionicons name="person-outline" size={64} color="#C7C7CC" />
-              <Text style={styles.emptyTitle}>No contacts found</Text>
+              <Text style={styles.emptyTitle}>{t('contacts.noContacts')}</Text>
               <Text style={styles.emptySubtitle}>
-                Try a different search term or create a new contact
+                {t('contacts.noContactsHint')}
               </Text>
               <TouchableOpacity
                 style={styles.createButton}
                 onPress={handleCreateContact}
               >
                 <Ionicons name="add-circle" size={20} color="#007AFF" />
-                <Text style={styles.createButtonText}>Create Contact</Text>
+                <Text style={styles.createButtonText}>{t('contacts.createContact')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -255,9 +257,9 @@ export default function ContactSearchButton({
           {!searching && !searchQuery && (
             <View style={styles.instructionsContainer}>
               <Ionicons name="search-outline" size={64} color="#C7C7CC" />
-              <Text style={styles.instructionsTitle}>Search for a contact</Text>
+              <Text style={styles.instructionsTitle}>{t('contacts.searchInstructions')}</Text>
               <Text style={styles.instructionsSubtitle}>
-                Enter a name, phone number, or email address to find a contact
+                {t('contacts.searchInstructionsHint')}
               </Text>
             </View>
           )}

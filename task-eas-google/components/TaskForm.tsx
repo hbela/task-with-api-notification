@@ -1,5 +1,7 @@
+import { useTranslation } from '@/hooks/useTranslation';
 import { DEFAULT_REMINDER_OPTIONS, DEFAULT_REMINDERS, getReminderLabel } from '@/lib/notifications';
 import { CreateTaskInput, TaskPriority, UpdateTaskInput } from '@/types/task';
+import { formatDate, formatTime } from '@/utils/dateFormatter';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
@@ -38,9 +40,10 @@ export default function TaskForm({
   initialValues,
   onSubmit,
   onCancel,
-  submitLabel = 'Save',
+  submitLabel,
   loading = false
 }: TaskFormProps) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState(initialValues?.title || '');
   const [description, setDescription] = useState(initialValues?.description || '');
   const [priority, setPriority] = useState<TaskPriority>(initialValues?.priority || 'medium');
@@ -73,11 +76,11 @@ export default function TaskForm({
     const newErrors: { title?: string } = {};
 
     if (!title.trim()) {
-      newErrors.title = 'Title is required';
+      newErrors.title = t('form.errors.titleRequired');
     } else if (title.trim().length < 3) {
-      newErrors.title = 'Title must be at least 3 characters';
+      newErrors.title = t('form.errors.titleTooShort');
     } else if (title.trim().length > 255) {
-      newErrors.title = 'Title must be less than 255 characters';
+      newErrors.title = t('form.errors.titleTooLong');
     }
 
     setErrors(newErrors);
@@ -109,7 +112,7 @@ export default function TaskForm({
       setErrors({});
     } catch (error) {
       // Error handling is done by parent component
-      console.error('Form submission error:', error);
+      console.error('[TaskForm] Form submission error:', error);
     }
   };
 
@@ -146,11 +149,11 @@ export default function TaskForm({
         {/* Title Input */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>
-            Title <Text style={styles.required}>*</Text>
+            {t('form.title')} <Text style={styles.required}>*</Text>
           </Text>
           <TextInput
             style={[styles.input, errors.title && styles.inputError]}
-            placeholder="Enter task title"
+            placeholder={t('form.placeholders.title')}
             value={title}
             onChangeText={(text) => {
               setTitle(text);
@@ -167,10 +170,10 @@ export default function TaskForm({
 
         {/* Description Input */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Description</Text>
+          <Text style={styles.label}>{t('tasks.description')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Enter task description (optional)"
+            placeholder={t('form.placeholders.description')}
             value={description}
             onChangeText={setDescription}
             multiline
@@ -182,7 +185,7 @@ export default function TaskForm({
 
         {/* Contact Selector */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Contact (Optional)</Text>
+          <Text style={styles.label}>{t('form.contact')}</Text>
           
           {selectedContactId ? (
             <View>
@@ -193,7 +196,7 @@ export default function TaskForm({
                 disabled={loading}
               >
                 <Ionicons name="close-circle" size={20} color="#FF3B30" />
-                <Text style={styles.removeContactText}>Remove Contact</Text>
+                <Text style={styles.removeContactText}>{t('form.removeContact')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -207,7 +210,7 @@ export default function TaskForm({
 
         {/* Priority Selector */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Priority</Text>
+          <Text style={styles.label}>{t('tasks.priority')}</Text>
           <View style={styles.priorityContainer}>
             {priorities.map((p) => (
               <TouchableOpacity
@@ -226,7 +229,7 @@ export default function TaskForm({
                   styles.priorityButtonText,
                   priority === p && styles.priorityButtonTextActive
                 ]}>
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                  {t(`tasks.priorities.${p}`)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -235,7 +238,7 @@ export default function TaskForm({
 
         {/* Due Date Selector */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Due Date & Time</Text>
+          <Text style={styles.label}>{t('form.dueDateTime')}</Text>
           <View style={styles.dateTimeContainer}>
             <TouchableOpacity
               style={styles.dateTimeButton}
@@ -244,11 +247,11 @@ export default function TaskForm({
             >
               <Ionicons name="calendar-outline" size={20} color="#007AFF" />
               <Text style={styles.dateTimeButtonText}>
-                {dueDate ? dueDate.toLocaleDateString('en-US', {
+                {dueDate ? formatDate(dueDate, {
                   month: 'short',
                   day: 'numeric',
                   year: 'numeric'
-                }) : 'Select Date'}
+                }) : t('form.selectDate')}
               </Text>
             </TouchableOpacity>
 
@@ -260,11 +263,7 @@ export default function TaskForm({
               >
                 <Ionicons name="time-outline" size={20} color="#007AFF" />
                 <Text style={styles.dateTimeButtonText}>
-                  {dueDate.toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
-                  })}
+                  {formatTime(dueDate)}
                 </Text>
               </TouchableOpacity>
             )}
@@ -304,7 +303,7 @@ export default function TaskForm({
         {dueDate && (
           <View style={styles.inputGroup}>
             <View style={styles.reminderHeader}>
-              <Text style={styles.label}>Reminders</Text>
+              <Text style={styles.label}>{t('form.reminders')}</Text>
               <Switch
                 value={enableReminders}
                 onValueChange={setEnableReminders}
@@ -315,12 +314,12 @@ export default function TaskForm({
             {enableReminders && (
               <View style={styles.reminderOptionsContainer}>
                 <Text style={styles.reminderHint}>
-                  Select when you'd like to be reminded:
+                  {t('form.reminderHint')}
                 </Text>
                 <View style={styles.reminderOptions}>
                   {DEFAULT_REMINDER_OPTIONS.map((minutes) => {
                     const isSelected = reminderTimes.includes(minutes);
-                    const label = getReminderLabel(minutes);
+                    const label = getReminderLabel(minutes, t);
                     
                     return (
                       <TouchableOpacity
@@ -355,7 +354,7 @@ export default function TaskForm({
                 </View>
                 {reminderTimes.length === 0 && (
                   <Text style={styles.reminderWarning}>
-                    ⚠️ Select at least one reminder time
+                    ⚠️ {t('form.reminderWarning')}
                   </Text>
                 )}
               </View>
@@ -371,7 +370,7 @@ export default function TaskForm({
             disabled={loading}
           >
             <Text style={styles.submitButtonText}>
-              {loading ? 'Saving...' : submitLabel}
+              {loading ? t('common.saving') : (submitLabel || t('common.save'))}
             </Text>
           </TouchableOpacity>
 
@@ -381,7 +380,7 @@ export default function TaskForm({
               onPress={onCancel}
               disabled={loading}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
           )}
         </View>

@@ -2,6 +2,7 @@ import ContactDisplay from '@/components/ContactDisplay';
 import ErrorMessage from '@/components/ErrorMessage';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useDeleteTask, useTask, useToggleTaskComplete } from '@/hooks/useTasksQuery';
+import { useTranslation } from '@/hooks/useTranslation';
 import { getStatusColor, getStatusLabel, getTaskStatus } from '@/lib/taskUtils';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -34,6 +35,7 @@ const getPriorityColor = (priority: string) => {
 export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
   
   // Fetch task with TanStack Query
   const { data: task, isLoading, error, refetch } = useTask(Number(id));
@@ -44,19 +46,19 @@ export default function TaskDetailScreen() {
 
   const handleDelete = () => {
     Alert.alert(
-      'Delete Task',
-      'Are you sure you want to delete this task?',
+      t('tasks.deleteConfirmTitle'),
+      t('tasks.deleteConfirmMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('tasks.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteTaskMutation.mutateAsync(Number(id));
               router.push('/(app)');
             } catch (err) {
-              Alert.alert('Error', 'Failed to delete task');
+              Alert.alert(t('common.error'), t('tasks.deleteError'));
             }
           }
         }
@@ -74,18 +76,18 @@ export default function TaskDetailScreen() {
       // Redirect to task list after toggling
       router.push('/(app)');
     } catch (err) {
-      Alert.alert('Error', 'Failed to update task');
+      Alert.alert(t('common.error'), t('tasks.updateError'));
     }
   };
 
   if (isLoading) {
-    return <LoadingSpinner message="Loading task..." />;
+    return <LoadingSpinner message={t('tasks.loadingTask')} />;
   }
 
   if (error || !task) {
     return (
       <ErrorMessage
-        message={error?.message || 'Task not found'}
+        message={error?.message || t('tasks.taskNotFound')}
         onRetry={() => refetch()}
       />
     );
@@ -93,7 +95,7 @@ export default function TaskDetailScreen() {
 
   const taskStatus = getTaskStatus(task);
   const statusColor = getStatusColor(taskStatus);
-  const statusLabel = getStatusLabel(taskStatus);
+  const statusLabel = getStatusLabel(taskStatus, t);
 
   return (
     <ScrollView style={styles.container}>
@@ -118,10 +120,13 @@ export default function TaskDetailScreen() {
           <View style={styles.metadataItem}>
             <Ionicons name="calendar-outline" size={16} color="#8E8E93" />
             <Text style={styles.metadataText}>
-              Created: {new Date(task.createdAt).toLocaleDateString('en-US', {
+              {t('tasks.created')}: {new Date(task.createdAt).toLocaleString('en-US', {
                 month: 'short',
                 day: 'numeric',
-                year: 'numeric'
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
               })}
             </Text>
           </View>
@@ -130,10 +135,13 @@ export default function TaskDetailScreen() {
             <View style={styles.metadataItem}>
               <Ionicons name="time-outline" size={16} color="#8E8E93" />
               <Text style={styles.metadataText}>
-                Updated: {new Date(task.updatedAt).toLocaleDateString('en-US', {
+                {t('tasks.updated')}: {new Date(task.updatedAt).toLocaleString('en-US', {
                   month: 'short',
                   day: 'numeric',
-                  year: 'numeric'
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true
                 })}
               </Text>
             </View>
@@ -152,19 +160,19 @@ export default function TaskDetailScreen() {
 
       {task.description && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Description</Text>
+          <Text style={styles.sectionTitle}>{t('tasks.description')}</Text>
           <Text style={styles.description}>{task.description}</Text>
         </View>
       )}
 
       {/* Priority and Due Date Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Details</Text>
+        <Text style={styles.sectionTitle}>{t('tasks.details')}</Text>
         
         <View style={styles.detailRow}>
           <View style={styles.detailLabel}>
             <Ionicons name="flag-outline" size={18} color="#8E8E93" />
-            <Text style={styles.detailLabelText}>Priority</Text>
+            <Text style={styles.detailLabelText}>{t('tasks.priority')}</Text>
           </View>
           <View style={[
             styles.priorityBadge,
@@ -174,7 +182,7 @@ export default function TaskDetailScreen() {
               styles.priorityText,
               { color: getPriorityColor(task.priority) }
             ]}>
-              {task.priority.toUpperCase()}
+              {t(`tasks.priorities.${task.priority}`).toUpperCase()}
             </Text>
           </View>
         </View>
@@ -183,7 +191,7 @@ export default function TaskDetailScreen() {
           <View style={styles.detailRow}>
             <View style={styles.detailLabel}>
               <Ionicons name="alarm-outline" size={18} color="#8E8E93" />
-              <Text style={styles.detailLabelText}>Due Date</Text>
+              <Text style={styles.detailLabelText}>{t('tasks.dueDate')}</Text>
             </View>
             <Text style={styles.detailValue}>
               {new Date(task.dueDate).toLocaleString('en-US', {
@@ -202,7 +210,7 @@ export default function TaskDetailScreen() {
       {/* Contact Section */}
       {task.contactId && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contact</Text>
+          <Text style={styles.sectionTitle}>{t('tasks.contact')}</Text>
           <ContactDisplay contactId={task.contactId} showActions={true} />
         </View>
       )}
@@ -213,7 +221,7 @@ export default function TaskDetailScreen() {
           onPress={() => router.push(`/(app)/task/edit/${id}`)}
         >
           <Ionicons name="pencil" size={20} color="white" />
-          <Text style={styles.actionText}>Edit Task</Text>
+          <Text style={styles.actionText}>{t('tasks.editTask')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -226,7 +234,7 @@ export default function TaskDetailScreen() {
             color="white"
           />
           <Text style={styles.actionText}>
-            {task.completed ? 'Mark as Pending' : 'Mark as Complete'}
+            {task.completed ? t('tasks.markPending') : t('tasks.markComplete')}
           </Text>
         </TouchableOpacity>
 
@@ -235,7 +243,7 @@ export default function TaskDetailScreen() {
           onPress={handleDelete}
         >
           <Ionicons name="trash" size={20} color="white" />
-          <Text style={styles.actionText}>Delete Task</Text>
+          <Text style={styles.actionText}>{t('tasks.deleteTask')}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -263,10 +271,10 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '700',
     color: '#1C1C1E',
-    lineHeight: 32,
+    lineHeight: 24,
   },
   completedTitle: {
     textDecorationLine: 'line-through',
@@ -309,7 +317,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
     color: '#1C1C1E',

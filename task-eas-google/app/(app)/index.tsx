@@ -2,6 +2,7 @@ import ErrorMessage from '@/components/ErrorMessage';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TaskCard from '@/components/TaskCard';
 import { useDeleteTask, useTasks, useToggleTaskComplete } from '@/hooks/useTasksQuery';
+import { useTranslation } from '@/hooks/useTranslation';
 import { useAuth } from '@/lib/auth';
 import { isTaskOverdue } from '@/lib/taskUtils';
 import { Task } from '@/types/task';
@@ -20,10 +21,37 @@ import {
 } from 'react-native';
 
 export default function TasksScreen() {
+  const { t, _key } = useTranslation();
   const router = useRouter();
   const { user, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'overdue' | 'completed'>('pending');
+  const [forceRender, setForceRender] = useState(0);
+  
+  // State for translated text to force updates
+  const [pageTitle, setPageTitle] = useState(t('tasks.title'));
+  const [searchPlaceholder, setSearchPlaceholder] = useState(t('tasks.searchPlaceholder'));
+
+  // Force re-render when language changes
+  React.useEffect(() => {
+    setForceRender(prev => prev + 1);
+    // Update text state to force React Native to recognize the change
+    setPageTitle(t('tasks.title'));
+    setSearchPlaceholder(t('tasks.searchPlaceholder'));
+    console.log('[TasksScreen] Updated text state:', {
+      title: t('tasks.title'),
+      placeholder: t('tasks.searchPlaceholder'),
+    });
+  }, [_key, t]);
+
+  // Debug logging
+  console.log('[TasksScreen] Rendering with key:', _key, 'forceRender:', forceRender);
+  console.log('[TasksScreen] Current translations:', {
+    title: t('tasks.title'),
+    searchPlaceholder: t('tasks.searchPlaceholder'),
+    filterPending: t('tasks.filterPending'),
+  });
+  console.log('[TasksScreen] State values:', { pageTitle, searchPlaceholder });
 
   // Fetch tasks with TanStack Query
   const { data, isLoading, error, refetch, isRefetching } = useTasks({
@@ -38,18 +66,18 @@ export default function TasksScreen() {
 
   const handleLogout = async () => {
     Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
+      t('auth.logout'),
+      t('auth.logoutConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Logout',
+          text: t('auth.logout'),
           style: 'destructive',
           onPress: async () => {
             try {
               await logout();
             } catch (error) {
-              Alert.alert('Error', 'Failed to logout. Please try again.');
+              Alert.alert(t('common.error'), t('errors.logoutFailed'));
             }
           }
         }
@@ -59,18 +87,18 @@ export default function TasksScreen() {
 
   const handleDelete = (task: Task) => {
     Alert.alert(
-      'Delete Task',
-      `Are you sure you want to delete "${task.title}"?`,
+      t('tasks.delete'),
+      t('tasks.deleteConfirm', { title: task.title }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteTaskMutation.mutateAsync(task.id);
             } catch (err) {
-              Alert.alert('Error', 'Failed to delete task');
+              Alert.alert(t('common.error'), t('errors.deleteTask'));
             }
           }
         }
@@ -85,7 +113,7 @@ export default function TasksScreen() {
         completed: !task.completed,
       });
     } catch (err) {
-      Alert.alert('Error', 'Failed to update task');
+      Alert.alert(t('common.error'), t('errors.updateTask'));
     }
   };
 
@@ -122,25 +150,25 @@ export default function TasksScreen() {
     if (isLoading) return null;
     
     return (
-      <View style={styles.emptyContainer}>
+      <View style={styles.emptyContainer} key={`empty-${_key}`}>
         <Ionicons name="checkmark-done-circle" size={64} color="#ccc" />
-        <Text style={styles.emptyText}>
+        <Text style={styles.emptyText} key={`empty-text-${_key}`}>
           {searchQuery
-            ? 'No tasks match your search'
+            ? t('tasks.noSearchResults')
             : filter === 'completed' 
-            ? 'No done tasks yet'
+            ? t('tasks.noCompletedTasks')
             : filter === 'pending'
-            ? 'No pending tasks'
+            ? t('tasks.noPendingTasks')
             : filter === 'overdue'
-            ? 'No overdue tasks'
-            : 'No tasks yet. Create your first task!'}
+            ? t('tasks.noOverdueTasks')
+            : t('tasks.emptyHint')}
         </Text>
         {!searchQuery && filter === 'all' && (
           <TouchableOpacity
             style={styles.createButton}
             onPress={() => router.push('/(app)/create')}
           >
-            <Text style={styles.createButtonText}>Create Task</Text>
+            <Text style={styles.createButtonText} key={`create-btn-${_key}`}>{t('tasks.create')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -148,105 +176,112 @@ export default function TasksScreen() {
   };
 
   if (isLoading) {
-    return <LoadingSpinner message="Loading tasks..." />;
+    return <LoadingSpinner message={t('common.loading')} />;
   }
 
   if (error && tasks.length === 0) {
     return (
       <ErrorMessage
-        message={error.message || 'Failed to load tasks'}
+        message={error.message || t('errors.loadTasks')}
         onRetry={() => refetch()}
       />
     );
   }
 
   return (
-    <View style={styles.container}>
-      {/* Custom Header */}
-      <View style={styles.customHeader}>
-        {/* Top Row: User Info and Logout */}
-        <View style={styles.topRow}>
-          <View style={{ flex: 1 }} />
-          <View style={styles.userSection}>
-            <Text style={styles.welcomeText}>
-              Hi, {user?.name?.split(' ')[0] || 'User'}
+    <>
+      <View style={styles.container} key={`container-${_key}`}>
+        {/* Custom Header */}
+        <View style={styles.customHeader} key={`header-${_key}`}>
+          {/* Top Row: User Info and Logout */}
+          <View style={styles.topRow}>
+            <View style={{ flex: 1 }} />
+            <View style={styles.userSection}>
+              <Text style={styles.welcomeText}>
+                Hi, {user?.name?.split(' ')[0] || 'User'}
+              </Text>
+              <TouchableOpacity onPress={handleLogout} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="log-out-outline" size={24} color="#007AFF" />
+              </TouchableOpacity>
+            </View>
+          </View>
+          
+          {/* Title Row: Centered */}
+          <View style={styles.titleRow}>
+            <Text style={styles.pageTitle} key={`title-${_key}-${forceRender}`}>
+              {pageTitle}
             </Text>
-            <TouchableOpacity onPress={handleLogout} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="log-out-outline" size={24} color="#007AFF" />
-            </TouchableOpacity>
           </View>
         </View>
-        
-        {/* Title Row: Centered */}
-        <View style={styles.titleRow}>
-          <Text style={styles.pageTitle}>Tasks</Text>
-        </View>
-      </View>
 
-      {/* Search and Filter Bar */}
-      <View style={styles.header}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#666" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search tasks..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery ? (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#666" />
+        {/* Search and Filter Bar */}
+        <View style={styles.header} key={`search-filter-${_key}`}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color="#666" />
+            <TextInput
+              key={`search-input-${_key}-${forceRender}`}
+              style={styles.searchInput}
+              placeholder={searchPlaceholder}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery ? (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color="#666" />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          {/* Filter Chips */}
+          <View style={styles.filterContainer} key={`filters-${_key}`}>
+            {(['all', 'pending', 'overdue', 'completed'] as const).map((filterType) => (
+              <TouchableOpacity
+                key={`${filterType}-${_key}`}
+                onPress={() => setFilter(filterType)}
+                style={[
+                  styles.filterChip,
+                  filter === filterType && styles.filterChipActive
+                ]}
+              >
+                <Text style={[
+                  styles.filterChipText,
+                  filter === filterType && styles.filterChipTextActive
+                ]}>
+                  {filterType === 'all' ? t('tasks.filterAll') :
+                   filterType === 'pending' ? t('tasks.filterPending') :
+                   filterType === 'overdue' ? t('tasks.filterOverdue') :
+                   t('tasks.filterCompleted')}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Task List */}
+        <FlatList
+          key={`task-list-${_key}`}
+          data={filteredTasks}
+          renderItem={renderTask}
+          keyExtractor={(item) => `task-${item.id}-${_key}`}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={renderEmpty}
+          extraData={`${_key}-${forceRender}`}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />
+          }
+        />
+
+        {/* Error Banner */}
+        {error && tasks.length > 0 && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorBannerText}>{error.message || 'An error occurred'}</Text>
+            <TouchableOpacity onPress={() => refetch()}>
+              <Ionicons name="close" size={20} color="white" />
             </TouchableOpacity>
-          ) : null}
-        </View>
-
-        {/* Filter Chips */}
-        <View style={styles.filterContainer}>
-          {(['all', 'pending', 'overdue', 'completed'] as const).map((filterType) => (
-            <TouchableOpacity
-              key={filterType}
-              onPress={() => setFilter(filterType)}
-              style={[
-                styles.filterChip,
-                filter === filterType && styles.filterChipActive
-              ]}
-            >
-              <Text style={[
-                styles.filterChipText,
-                filter === filterType && styles.filterChipTextActive
-              ]}>
-                {filterType === 'completed' 
-                  ? 'Done' 
-                  : filterType.charAt(0).toUpperCase() + filterType.slice(1)
-                }
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+          </View>
+        )}
       </View>
-
-      {/* Task List */}
-      <FlatList
-        data={filteredTasks}
-        renderItem={renderTask}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={renderEmpty}
-        refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />
-        }
-      />
-
-      {/* Error Banner */}
-      {error && tasks.length > 0 && (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText}>{error.message || 'An error occurred'}</Text>
-          <TouchableOpacity onPress={() => refetch()}>
-            <Ionicons name="close" size={20} color="white" />
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
+    </>
   );
 }
 

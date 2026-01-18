@@ -186,7 +186,21 @@ export async function scheduleDailySummary(hour: number = 9) {
 /**
  * Get reminder label for UI display
  */
-export function getReminderLabel(minutes: number): string {
+export function getReminderLabel(minutes: number, t?: (key: string) => string): string {
+  // If translation function is provided, use it
+  if (t) {
+    if (minutes === 5) return t('tasks.reminders.5min');
+    if (minutes === 15) return t('tasks.reminders.15min');
+    if (minutes === 30) return t('tasks.reminders.30min');
+    if (minutes === 60) return t('tasks.reminders.1hour');
+    if (minutes === 60 * 2) return t('tasks.reminders.2hours');
+    if (minutes === 60 * 12) return t('tasks.reminders.12hours');
+    if (minutes === 1440) return t('tasks.reminders.1day');
+    if (minutes === 1440 * 2) return t('tasks.reminders.2days');
+    if (minutes === 1440 * 7) return t('tasks.reminders.1week');
+  }
+  
+  // Fallback to English
   if (minutes === 5) return '5 minutes before';
   if (minutes === 15) return '15 minutes before';
   if (minutes === 30) return '30 minutes before';

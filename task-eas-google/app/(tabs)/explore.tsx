@@ -3,6 +3,7 @@ import { TaskItem } from '@/components/task-item';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from '@/hooks/useTranslation';
 import { taskApi, type Task } from '@/lib/api';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -16,6 +17,7 @@ import {
 } from 'react-native';
 
 export default function TasksScreen() {
+  const { t } = useTranslation();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -35,7 +37,7 @@ export default function TasksScreen() {
       setTasks(fetchedTasks);
     } catch (error) {
       console.error('Failed to load tasks:', error);
-      Alert.alert('Error', 'Failed to load tasks. Please try again.');
+      Alert.alert(t('common.error'), t('errors.loadTasks'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -57,10 +59,10 @@ export default function TasksScreen() {
       // Add new task to the beginning of the list
       setTasks([task, ...tasks]);
       
-      Alert.alert('Success', 'Task created successfully!');
+      Alert.alert(t('common.success'), t('tasks.createSuccess'));
     } catch (error: any) {
       console.error('Failed to create task:', error);
-      Alert.alert('Error', error.message || 'Failed to create task');
+      Alert.alert(t('common.error'), error.message || t('errors.createTask'));
       throw error; // Re-throw to prevent modal from closing
     }
   };
@@ -73,7 +75,7 @@ export default function TasksScreen() {
       setTasks(tasks.map(t => t.id === updatedTask.id ? updatedTask : t));
     } catch (error: any) {
       console.error('Failed to toggle task:', error);
-      Alert.alert('Error', error.message || 'Failed to update task');
+      Alert.alert(t('common.error'), error.message || t('errors.updateTask'));
     }
   };
 
@@ -84,10 +86,10 @@ export default function TasksScreen() {
       // Remove task from list
       setTasks(tasks.filter(t => t.id !== task.id));
       
-      Alert.alert('Success', 'Task deleted successfully!');
+      Alert.alert(t('common.success'), t('tasks.deleteSuccess'));
     } catch (error: any) {
       console.error('Failed to delete task:', error);
-      Alert.alert('Error', error.message || 'Failed to delete task');
+      Alert.alert(t('common.error'), error.message || t('errors.deleteTask'));
     }
   };
 
@@ -95,10 +97,10 @@ export default function TasksScreen() {
     <View style={styles.emptyState}>
       <ThemedText style={styles.emptyIcon}>📝</ThemedText>
       <ThemedText type="title" style={styles.emptyTitle}>
-        No tasks yet
+        {t('tasks.empty')}
       </ThemedText>
       <ThemedText style={styles.emptyText}>
-        Tap the + button below to create your first task
+        {t('tasks.emptyHint')}
       </ThemedText>
     </View>
   );
@@ -110,11 +112,11 @@ export default function TasksScreen() {
     return (
       <View style={styles.header}>
         <ThemedText type="title" style={styles.headerTitle}>
-          My Tasks
+          {t('tasks.title')}
         </ThemedText>
         {totalCount > 0 && (
           <ThemedText style={styles.headerSubtitle}>
-            {completedCount} of {totalCount} completed
+            {t('tasks.completedCount', { completed: completedCount, total: totalCount })}
           </ThemedText>
         )}
       </View>
@@ -126,7 +128,7 @@ export default function TasksScreen() {
       <ThemedView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#4285F4" />
-          <ThemedText style={styles.loadingText}>Loading tasks...</ThemedText>
+          <ThemedText style={styles.loadingText}>{t('common.loading')}</ThemedText>
         </View>
       </ThemedView>
     );

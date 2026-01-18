@@ -2,6 +2,7 @@ import ErrorMessage from '@/components/ErrorMessage';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TaskForm from '@/components/TaskForm';
 import { useTask, useUpdateTask } from '@/hooks/useTasksQuery';
+import { useTranslation } from '@/hooks/useTranslation';
 import { UpdateTaskInput } from '@/types/task';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
@@ -10,6 +11,7 @@ import { Alert, StyleSheet, View } from 'react-native';
 export default function EditTaskScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
   
   // Fetch task data
   const { data: task, isLoading, error } = useTask(Number(id));
@@ -25,19 +27,19 @@ export default function EditTaskScreen() {
       });
       
       Alert.alert(
-        'Success',
-        'Task updated successfully!',
+        t('common.success'),
+        t('tasks.updateSuccess'),
         [
           {
-            text: 'OK',
+            text: t('common.done'),
             onPress: () => router.push('/(app)')
           }
         ]
       );
     } catch (error: any) {
       Alert.alert(
-        'Error',
-        error.message || 'Failed to update task. Please try again.'
+        t('common.error'),
+        error.message || t('tasks.updateError')
       );
     }
   };
@@ -47,13 +49,13 @@ export default function EditTaskScreen() {
   };
 
   if (isLoading) {
-    return <LoadingSpinner message="Loading task..." />;
+    return <LoadingSpinner message={t('tasks.loadingTask')} />;
   }
 
   if (error || !task) {
     return (
       <ErrorMessage
-        message={error?.message || 'Task not found'}
+        message={error?.message || t('tasks.taskNotFound')}
         onRetry={() => {}}
       />
     );
@@ -72,7 +74,7 @@ export default function EditTaskScreen() {
         }}
         onSubmit={handleSubmit}
         onCancel={handleCancel}
-        submitLabel="Update Task"
+        submitLabel={t('tasks.updateTask')}
         loading={updateTaskMutation.isPending}
       />
     </View>

@@ -1,5 +1,7 @@
+import { useTranslation } from '@/hooks/useTranslation';
 import { isTaskOverdue } from '@/lib/taskUtils';
 import { Task } from '@/types/task';
+import { formatDateTime } from '@/utils/dateFormatter';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
@@ -14,18 +16,6 @@ interface TaskCardProps {
   onPress: () => void;
   onToggleComplete: () => void;
 }
-
-const formatDateTime = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  });
-};
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
@@ -47,6 +37,7 @@ export default function TaskCard({
   onPress,
   onToggleComplete
 }: TaskCardProps) {
+  const { t } = useTranslation();
   const isOverdue = isTaskOverdue(task);
   
   return (
@@ -101,7 +92,7 @@ export default function TaskCard({
           <View style={styles.dateContainer}>
             <View style={styles.dateRow}>
               <Ionicons name="calendar-outline" size={12} color="#8E8E93" />
-              <Text style={styles.dateLabel}>Created:</Text>
+              <Text style={styles.dateLabel}>{t('common.created')}:</Text>
               <Text style={styles.date}>{formatDateTime(task.createdAt)}</Text>
             </View>
             
@@ -112,7 +103,7 @@ export default function TaskCard({
                   size={12} 
                   color={isOverdue ? "#FF3B30" : "#FF9500"} 
                 />
-                <Text style={styles.dateLabel}>{isOverdue ? 'Overdue:' : 'Due:'}</Text>
+                <Text style={styles.dateLabel}>{isOverdue ? t('tasks.overdue') : t('tasks.due')}:</Text>
                 <Text style={[
                   styles.date, 
                   isOverdue ? styles.overdueDate : styles.dueDate

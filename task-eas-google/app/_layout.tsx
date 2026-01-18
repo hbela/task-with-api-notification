@@ -1,4 +1,5 @@
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { LanguageProvider } from '@/context/LanguageContext';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -99,10 +100,12 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <RootLayoutNav />
-      </AuthProvider>
-    </QueryClientProvider>
+    <LanguageProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <RootLayoutNav />
+        </AuthProvider>
+      </QueryClientProvider>
+    </LanguageProvider>
   );
 }

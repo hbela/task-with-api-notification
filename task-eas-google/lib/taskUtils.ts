@@ -45,7 +45,23 @@ export function getStatusColor(status: 'completed' | 'overdue' | 'pending'): str
 /**
  * Get status label
  */
-export function getStatusLabel(status: 'completed' | 'overdue' | 'pending'): string {
+export function getStatusLabel(
+  status: 'completed' | 'overdue' | 'pending',
+  t?: (key: string) => string
+): string {
+  // If translation function is provided, use it
+  if (t) {
+    switch (status) {
+      case 'completed':
+        return t('tasks.completed');
+      case 'overdue':
+        return t('tasks.overdue');
+      case 'pending':
+        return t('tasks.pending');
+    }
+  }
+  
+  // Fallback to English
   switch (status) {
     case 'completed':
       return 'Completed';

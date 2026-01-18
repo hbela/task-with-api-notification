@@ -1,3 +1,4 @@
+import { useTranslation } from '@/hooks/useTranslation';
 import { Ionicons } from '@expo/vector-icons';
 import * as Contacts from 'expo-contacts';
 import React, { useEffect, useState } from 'react';
@@ -18,6 +19,7 @@ interface ContactInfo {
 }
 
 export default function ContactDisplay({ contactId, showActions = true }: ContactDisplayProps) {
+  const { t } = useTranslation();
   const [contact, setContact] = useState<ContactInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -69,9 +71,9 @@ export default function ContactDisplay({ contactId, showActions = true }: Contac
 
   const handleCreateContact = () => {
     Alert.alert(
-      'Contact Not Found',
-      'This contact no longer exists in your device. Please create it again using your Contacts app.',
-      [{ text: 'OK' }]
+      t('contacts.contactNotFound'),
+      t('contacts.contactNotFoundAlert'),
+      [{ text: t('common.done') }]
     );
   };
 
@@ -80,7 +82,7 @@ export default function ContactDisplay({ contactId, showActions = true }: Contac
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
           <Ionicons name="person-outline" size={20} color="#8E8E93" />
-          <Text style={styles.loadingText}>Loading contact...</Text>
+          <Text style={styles.loadingText}>{t('contacts.loadingContact')}</Text>
         </View>
       </View>
     );
@@ -92,9 +94,9 @@ export default function ContactDisplay({ contactId, showActions = true }: Contac
         <View style={styles.notFoundContainer}>
           <Ionicons name="alert-circle-outline" size={20} color="#FF9500" />
           <View style={styles.notFoundTextContainer}>
-            <Text style={styles.notFoundTitle}>Contact not found</Text>
+            <Text style={styles.notFoundTitle}>{t('contacts.contactNotFound')}</Text>
             <Text style={styles.notFoundSubtitle}>
-              This contact may have been deleted from your device
+              {t('contacts.contactNotFoundHint')}
             </Text>
           </View>
           {showActions && (
@@ -129,7 +131,7 @@ export default function ContactDisplay({ contactId, showActions = true }: Contac
             </Text>
           </View>
           <View style={styles.contactHeaderInfo}>
-            <Text style={styles.contactName}>{contact.name || 'Unknown'}</Text>
+            <Text style={styles.contactName}>{contact.name || t('contacts.unknown')}</Text>
             {primaryPhone && (
               <Text style={styles.contactLabel}>
                 {primaryPhone.label || 'Phone'}
@@ -211,22 +213,28 @@ export default function ContactDisplay({ contactId, showActions = true }: Contac
 
         {contact.phoneNumbers && contact.phoneNumbers.length > 1 && (
           <Text style={styles.moreInfo}>
-            +{contact.phoneNumbers.length - 1} more phone number
-            {contact.phoneNumbers.length - 1 > 1 ? 's' : ''}
+            {contact.phoneNumbers.length - 1 > 1 
+              ? t('contacts.morePhonesPlural').replace('%{count}', String(contact.phoneNumbers.length - 1))
+              : t('contacts.morePhones').replace('%{count}', String(contact.phoneNumbers.length - 1))
+            }
           </Text>
         )}
 
         {contact.emails && contact.emails.length > 1 && (
           <Text style={styles.moreInfo}>
-            +{contact.emails.length - 1} more email
-            {contact.emails.length - 1 > 1 ? 's' : ''}
+            {contact.emails.length - 1 > 1
+              ? t('contacts.moreEmailsPlural').replace('%{count}', String(contact.emails.length - 1))
+              : t('contacts.moreEmails').replace('%{count}', String(contact.emails.length - 1))
+            }
           </Text>
         )}
 
         {contact.addresses && contact.addresses.length > 1 && (
           <Text style={styles.moreInfo}>
-            +{contact.addresses.length - 1} more address
-            {contact.addresses.length - 1 > 1 ? 'es' : ''}
+            {contact.addresses.length - 1 > 1
+              ? t('contacts.moreAddressesPlural').replace('%{count}', String(contact.addresses.length - 1))
+              : t('contacts.moreAddresses').replace('%{count}', String(contact.addresses.length - 1))
+            }
           </Text>
         )}
       </View>
@@ -308,7 +316,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contactName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#1C1C1E',
     marginBottom: 2,
